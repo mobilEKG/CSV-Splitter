@@ -1,5 +1,6 @@
 # CSV-Splitter
 CSV Splitter is an open-source GUI tool for splitting large text-based files into smaller parts.
+![Alt text](images/Screenshot.png)
 
 # Use PyInstaller to bundle app in Windows
 ```
