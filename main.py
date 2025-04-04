@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog,
     QLabel, QGroupBox, QCheckBox, QMessageBox, QProgressBar, QHBoxLayout
 )
+from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt
 from number_input import NumberLineEdit
 
@@ -165,8 +166,19 @@ class CSVSplitter(QWidget):
             # self.progress_bar.setVisible(False)
             self.cancel_button.setEnabled(False)
 
+
+def get_platform_icon():
+    if sys.platform.startswith("win"):
+        return QIcon("app_icon.ico")
+    else:
+        return QIcon("app_icon.png")
+    
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    icon = get_platform_icon()
+    app.setWindowIcon(icon)
+
     splitter = CSVSplitter()
     splitter.show()
+    
     sys.exit(app.exec())
