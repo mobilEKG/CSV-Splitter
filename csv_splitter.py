@@ -2,41 +2,69 @@ import sys
 import os
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog,
-    QLabel, QSpinBox, QCheckBox, QMessageBox, QProgressBar, QHBoxLayout
+    QLabel, QGroupBox, QCheckBox, QMessageBox, QProgressBar, QHBoxLayout
 )
 from PySide6.QtCore import Qt
 from number_input import NumberLineEdit
 
 class CSVSplitter(QWidget):
+    DEFAULT_WINDOW_WIDTH = 500
+    DEFAULT_WINDOW_HEIGHT = 360
+    DEFAULT_SPACE = 20
+    DEFAULT_LINES_PER_FILE = 200000
+
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("CSV Splitter")
-        self.setFixedSize(400, 280)
+        self.setFixedSize(self.DEFAULT_WINDOW_WIDTH, self.DEFAULT_WINDOW_HEIGHT)
 
         self.layout = QVBoxLayout()
 
+        # Section 1
+        section1 = QGroupBox("Select CSV File")
+        section1_layout = QVBoxLayout()
+        section1_layout.setAlignment(Qt.AlignTop)
+        section1_layout.setSpacing(self.DEFAULT_SPACE)
+        section1_layout.setContentsMargins(self.DEFAULT_SPACE, self.DEFAULT_SPACE, self.DEFAULT_SPACE, self.DEFAULT_SPACE)
+        section1.setLayout(section1_layout)
+        self.layout.addWidget(section1)     
+
         self.file_label = QLabel("No file selected")
-        self.layout.addWidget(self.file_label)
+        self.file_label.setWordWrap(True)
+        section1_layout.addWidget(self.file_label)
 
         self.select_button = QPushButton("Select CSV File")
         self.select_button.clicked.connect(self.select_file)
-        self.layout.addWidget(self.select_button)
+        section1_layout.addWidget(self.select_button)
 
+        # Section 2
+        section2 = QGroupBox("Options")
+        section2_layout = QVBoxLayout()
+        section2_layout.setAlignment(Qt.AlignTop)
+        section2_layout.setSpacing(self.DEFAULT_SPACE)
+        section2_layout.setContentsMargins(self.DEFAULT_SPACE, self.DEFAULT_SPACE, self.DEFAULT_SPACE, self.DEFAULT_SPACE)        
+        section2.setLayout(section2_layout)
+        self.layout.addWidget(section2)
+
+        line_input_layout = QHBoxLayout()
+        section2_layout.addLayout(line_input_layout)
         self.line_input = NumberLineEdit(self)
-        self.line_input.setValue(200000)
-        self.layout.addWidget(QLabel("Lines per file:"))
-        self.layout.addWidget(self.line_input)
+        self.line_input.setValue(self.DEFAULT_LINES_PER_FILE)
+        line_input_layout.addWidget(QLabel("Lines per file:"))
+        line_input_layout.addWidget(self.line_input)
 
         self.include_header_checkbox = QCheckBox("Include header in each part")
         self.include_header_checkbox.setChecked(True)
-        self.layout.addWidget(self.include_header_checkbox)
+        section2_layout.addWidget(self.include_header_checkbox)
 
+        # QProgressBar
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
-        self.progress_bar.setVisible(False)
+        # self.progress_bar.setVisible(False)
         self.layout.addWidget(self.progress_bar)
 
+        # QHBoxLayout
         self.button_layout = QHBoxLayout()
         self.split_button = QPushButton("Split File")
         self.split_button.clicked.connect(self.split_file)
@@ -86,7 +114,7 @@ class CSVSplitter(QWidget):
 
         self.progress_bar.setMaximum(self.total_lines)
         self.progress_bar.setValue(0)
-        self.progress_bar.setVisible(True)
+        # self.progress_bar.setVisible(True)
 
         try:
             with open(self.file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -99,7 +127,7 @@ class CSVSplitter(QWidget):
                 for line_num, line in enumerate(f, start=1):
                     if self.cancel_requested:
                         QMessageBox.information(self, "Cancelled", "File splitting has been cancelled.")
-                        self.progress_bar.setVisible(False)
+                        # self.progress_bar.setVisible(False)
                         self.cancel_button.setEnabled(False)
                         return
 
@@ -134,7 +162,7 @@ class CSVSplitter(QWidget):
                 QMessageBox.information(self, "Success", f"File successfully split into {written_files} parts.")
 
         finally:
-            self.progress_bar.setVisible(False)
+            # self.progress_bar.setVisible(False)
             self.cancel_button.setEnabled(False)
 
 if __name__ == "__main__":
