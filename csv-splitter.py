@@ -175,7 +175,7 @@ def get_platform_icon():
     if sys.platform.startswith("win"):
         icon_path = os.path.join(basedir, 'app_icon.ico')
     else:
-        icon_path = os.path.join(basedir, 'app_icon.png')
+        icon_path = os.path.join(basedir, 'app_icon.icns')
     
     return QIcon(icon_path)
     

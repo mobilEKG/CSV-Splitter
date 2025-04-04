@@ -31,7 +31,7 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller csv-splitter.py --clean --noupx --noconsole --noconfirm --onefile --windowed --icon=app_icon.ico
+          pyinstaller csv-splitter.py --clean --noupx --noconsole --noconfirm --onefile --windowed
 
       - name: Rename artifact
         run: |
