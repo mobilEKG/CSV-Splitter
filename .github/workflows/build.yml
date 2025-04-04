@@ -37,11 +37,11 @@ jobs:
         run: |
           mkdir dist_upload
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            mv dist/main.exe dist_upload/myapp-windows.exe
+            mv dist/main.exe dist_upload/CSV_Splitter_windows.exe
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            mv dist/main dist_upload/myapp-macos
+            mv dist/main dist_upload/CSV_Splitter_macos
           else
-            mv dist/main dist_upload/myapp-linux
+            mv dist/main dist_upload/CSV_Splitter_linux
           fi
         shell: bash
 
