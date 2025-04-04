@@ -2,15 +2,15 @@ import sys
 import os
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog,
-    QLabel, QSpinBox, QCheckBox, QMessageBox
+    QLabel, QSpinBox, QCheckBox, QMessageBox, QProgressBar
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 
 class CSVSplitter(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("CSV Splitter")
-        self.resize(400, 200)
+        self.resize(400, 250)
 
         self.layout = QVBoxLayout()
 
@@ -30,6 +30,11 @@ class CSVSplitter(QWidget):
         self.include_header_checkbox = QCheckBox("Include header in each part")
         self.include_header_checkbox.setChecked(True)
         self.layout.addWidget(self.include_header_checkbox)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setValue(0)
+        self.progress_bar.setVisible(False)
+        self.layout.addWidget(self.progress_bar)
 
         self.split_button = QPushButton("Split File")
         self.split_button.clicked.connect(self.split_file)
@@ -64,17 +69,25 @@ class CSVSplitter(QWidget):
         name, ext = os.path.splitext(base_name)
         output_dir = os.path.dirname(self.file_path)
 
+        self.progress_bar.setMaximum(self.total_lines)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setVisible(True)
+
         with open(self.file_path, 'r', encoding='utf-8', errors='ignore') as f:
             header = f.readline() if include_header else ''
+            self.progress_bar.setValue(1 if include_header else 0)
             lines = []
             file_index = 1
             written_files = 0
 
             for line_num, line in enumerate(f, start=1):
                 lines.append(line)
+                self.progress_bar.setValue(self.progress_bar.value() + 1)
+                QApplication.processEvents()  # Allow GUI update
+
                 if len(lines) >= lines_per_file:
                     written_files += 1
-                    output_path = os.path.join(output_dir, f"{name}_part{file_index}_of_XXX{ext}")
+                    output_path = os.path.join(output_dir, f"{name}_{file_index}_of_XXX{ext}")
                     with open(output_path, 'w', encoding='utf-8') as out_file:
                         if include_header:
                             out_file.write(header)
@@ -84,7 +97,7 @@ class CSVSplitter(QWidget):
 
             if lines:
                 written_files += 1
-                output_path = os.path.join(output_dir, f"{name}_part{file_index}_of_XXX{ext}")
+                output_path = os.path.join(output_dir, f"{name}_{file_index}_of_XXX{ext}")
                 with open(output_path, 'w', encoding='utf-8') as out_file:
                     if include_header:
                         out_file.write(header)
@@ -92,10 +105,11 @@ class CSVSplitter(QWidget):
 
         # Rename all part files with correct total count
         for i in range(1, written_files + 1):
-            old_name = os.path.join(output_dir, f"{name}_part{i}_of_XXX{ext}")
-            new_name = os.path.join(output_dir, f"{name}_part{i}_of_{written_files}{ext}")
+            old_name = os.path.join(output_dir, f"{name}_{i}_of_XXX{ext}")
+            new_name = os.path.join(output_dir, f"{name}_{i}_of_{written_files}{ext}")
             os.rename(old_name, new_name)
 
+        self.progress_bar.setVisible(False)
         QMessageBox.information(self, "Success", f"File successfully split into {written_files} parts.")
 
 if __name__ == "__main__":
