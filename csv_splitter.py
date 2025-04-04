@@ -60,7 +60,7 @@ class CSVSplitter(QWidget):
             self.file_path = file_path
             self.file_label.setText(os.path.basename(file_path))
             self.total_lines = self.get_total_lines(file_path)
-            self.file_label.setText(f"Selected File: {os.path.basename(file_path)} ({self.total_lines} lines)")
+            self.file_label.setText(f"Selected File: {os.path.basename(file_path)} ({self.total_lines:,} lines)")
 
     def get_total_lines(self, file_path):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -108,7 +108,7 @@ class CSVSplitter(QWidget):
 
                     if len(lines) >= lines_per_file:
                         written_files += 1
-                        output_path = os.path.join(output_dir, f"{name}_part{file_index}_of_XXX{ext}")
+                        output_path = os.path.join(output_dir, f"{name}_{file_index}_of_XXX{ext}")
                         with open(output_path, 'w', encoding='utf-8') as out_file:
                             if include_header:
                                 out_file.write(header)
@@ -118,7 +118,7 @@ class CSVSplitter(QWidget):
 
                 if lines and not self.cancel_requested:
                     written_files += 1
-                    output_path = os.path.join(output_dir, f"{name}_part{file_index}_of_XXX{ext}")
+                    output_path = os.path.join(output_dir, f"{name}_{file_index}_of_XXX{ext}")
                     with open(output_path, 'w', encoding='utf-8') as out_file:
                         if include_header:
                             out_file.write(header)
@@ -126,8 +126,8 @@ class CSVSplitter(QWidget):
 
             if not self.cancel_requested:
                 for i in range(1, written_files + 1):
-                    old_name = os.path.join(output_dir, f"{name}_part{i}_of_XXX{ext}")
-                    new_name = os.path.join(output_dir, f"{name}_part{i}_of_{written_files}{ext}")
+                    old_name = os.path.join(output_dir, f"{name}_{i}_of_XXX{ext}")
+                    new_name = os.path.join(output_dir, f"{name}_{i}_of_{written_files}{ext}")
                     os.rename(old_name, new_name)
 
                 QMessageBox.information(self, "Success", f"File successfully split into {written_files} parts.")
