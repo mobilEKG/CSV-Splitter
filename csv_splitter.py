@@ -5,12 +5,14 @@ from PySide6.QtWidgets import (
     QLabel, QSpinBox, QCheckBox, QMessageBox, QProgressBar, QHBoxLayout
 )
 from PySide6.QtCore import Qt
+from number_input import NumberLineEdit
 
 class CSVSplitter(QWidget):
     def __init__(self):
         super().__init__()
+
         self.setWindowTitle("CSV Splitter")
-        self.resize(400, 280)
+        self.setFixedSize(400, 280)
 
         self.layout = QVBoxLayout()
 
@@ -21,11 +23,10 @@ class CSVSplitter(QWidget):
         self.select_button.clicked.connect(self.select_file)
         self.layout.addWidget(self.select_button)
 
-        self.line_count_spin = QSpinBox()
-        self.line_count_spin.setMaximum(10000000)
-        self.line_count_spin.setValue(200000)
+        self.line_input = NumberLineEdit(self)
+        self.line_input.setValue(200000)
         self.layout.addWidget(QLabel("Lines per file:"))
-        self.layout.addWidget(self.line_count_spin)
+        self.layout.addWidget(self.line_input)
 
         self.include_header_checkbox = QCheckBox("Include header in each part")
         self.include_header_checkbox.setChecked(True)
@@ -76,7 +77,7 @@ class CSVSplitter(QWidget):
 
         self.cancel_requested = False
         self.cancel_button.setEnabled(True)
-        lines_per_file = self.line_count_spin.value()
+        lines_per_file = self.line_input.value()
         include_header = self.include_header_checkbox.isChecked()
 
         base_name = os.path.basename(self.file_path)
