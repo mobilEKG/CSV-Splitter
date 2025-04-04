@@ -1,4 +1,4 @@
-name: Build PySide6 GUI App
+name: Build CSV Splitter
 
 on:
   push:
