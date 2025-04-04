@@ -166,12 +166,18 @@ class CSVSplitter(QWidget):
             # self.progress_bar.setVisible(False)
             self.cancel_button.setEnabled(False)
 
-
 def get_platform_icon():
-    if sys.platform.startswith("win"):
-        return QIcon("app_icon.ico")
+    if getattr(sys, 'frozen', False):  # we are running in a bundle
+        basedir = sys._MEIPASS
     else:
-        return QIcon("app_icon.png")
+        basedir = os.path.dirname(__file__)
+
+    if sys.platform.startswith("win"):
+        icon_path = os.path.join(basedir, 'app_icon.ico')
+    else:
+        icon_path = os.path.join(basedir, 'app_icon.png')
+    
+    return QIcon(icon_path)
     
 if __name__ == "__main__":
     app = QApplication(sys.argv)
