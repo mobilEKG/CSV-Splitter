@@ -2,15 +2,15 @@ import sys
 import os
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog,
-    QLabel, QSpinBox, QCheckBox, QMessageBox, QProgressBar
+    QLabel, QSpinBox, QCheckBox, QMessageBox, QProgressBar, QHBoxLayout
 )
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt
 
 class CSVSplitter(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("CSV Splitter")
-        self.resize(400, 250)
+        self.resize(400, 280)
 
         self.layout = QVBoxLayout()
 
@@ -36,14 +36,23 @@ class CSVSplitter(QWidget):
         self.progress_bar.setVisible(False)
         self.layout.addWidget(self.progress_bar)
 
+        self.button_layout = QHBoxLayout()
         self.split_button = QPushButton("Split File")
         self.split_button.clicked.connect(self.split_file)
-        self.layout.addWidget(self.split_button)
+        self.button_layout.addWidget(self.split_button)
+
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.clicked.connect(self.cancel_split)
+        self.cancel_button.setEnabled(False)
+        self.button_layout.addWidget(self.cancel_button)
+
+        self.layout.addLayout(self.button_layout)
 
         self.setLayout(self.layout)
 
         self.file_path = ""
         self.total_lines = 0
+        self.cancel_requested = False
 
     def select_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", "CSV Files (*.csv);;Text Files (*.txt);;XML Files (*.xml);;All Files (*)")
@@ -57,11 +66,16 @@ class CSVSplitter(QWidget):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             return sum(1 for _ in f)
 
+    def cancel_split(self):
+        self.cancel_requested = True
+
     def split_file(self):
         if not self.file_path:
             QMessageBox.warning(self, "Warning", "Please select a file first.")
             return
 
+        self.cancel_requested = False
+        self.cancel_button.setEnabled(True)
         lines_per_file = self.line_count_spin.value()
         include_header = self.include_header_checkbox.isChecked()
 
@@ -73,44 +87,54 @@ class CSVSplitter(QWidget):
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
 
-        with open(self.file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            header = f.readline() if include_header else ''
-            self.progress_bar.setValue(1 if include_header else 0)
-            lines = []
-            file_index = 1
-            written_files = 0
+        try:
+            with open(self.file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                header = f.readline() if include_header else ''
+                self.progress_bar.setValue(1 if include_header else 0)
+                lines = []
+                file_index = 1
+                written_files = 0
 
-            for line_num, line in enumerate(f, start=1):
-                lines.append(line)
-                self.progress_bar.setValue(self.progress_bar.value() + 1)
-                QApplication.processEvents()  # Allow GUI update
+                for line_num, line in enumerate(f, start=1):
+                    if self.cancel_requested:
+                        QMessageBox.information(self, "Cancelled", "File splitting has been cancelled.")
+                        self.progress_bar.setVisible(False)
+                        self.cancel_button.setEnabled(False)
+                        return
 
-                if len(lines) >= lines_per_file:
+                    lines.append(line)
+                    self.progress_bar.setValue(self.progress_bar.value() + 1)
+                    QApplication.processEvents()
+
+                    if len(lines) >= lines_per_file:
+                        written_files += 1
+                        output_path = os.path.join(output_dir, f"{name}_part{file_index}_of_XXX{ext}")
+                        with open(output_path, 'w', encoding='utf-8') as out_file:
+                            if include_header:
+                                out_file.write(header)
+                            out_file.writelines(lines)
+                        lines = []
+                        file_index += 1
+
+                if lines and not self.cancel_requested:
                     written_files += 1
-                    output_path = os.path.join(output_dir, f"{name}_{file_index}_of_XXX{ext}")
+                    output_path = os.path.join(output_dir, f"{name}_part{file_index}_of_XXX{ext}")
                     with open(output_path, 'w', encoding='utf-8') as out_file:
                         if include_header:
                             out_file.write(header)
                         out_file.writelines(lines)
-                    lines = []
-                    file_index += 1
 
-            if lines:
-                written_files += 1
-                output_path = os.path.join(output_dir, f"{name}_{file_index}_of_XXX{ext}")
-                with open(output_path, 'w', encoding='utf-8') as out_file:
-                    if include_header:
-                        out_file.write(header)
-                    out_file.writelines(lines)
+            if not self.cancel_requested:
+                for i in range(1, written_files + 1):
+                    old_name = os.path.join(output_dir, f"{name}_part{i}_of_XXX{ext}")
+                    new_name = os.path.join(output_dir, f"{name}_part{i}_of_{written_files}{ext}")
+                    os.rename(old_name, new_name)
 
-        # Rename all part files with correct total count
-        for i in range(1, written_files + 1):
-            old_name = os.path.join(output_dir, f"{name}_{i}_of_XXX{ext}")
-            new_name = os.path.join(output_dir, f"{name}_{i}_of_{written_files}{ext}")
-            os.rename(old_name, new_name)
+                QMessageBox.information(self, "Success", f"File successfully split into {written_files} parts.")
 
-        self.progress_bar.setVisible(False)
-        QMessageBox.information(self, "Success", f"File successfully split into {written_files} parts.")
+        finally:
+            self.progress_bar.setVisible(False)
+            self.cancel_button.setEnabled(False)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
