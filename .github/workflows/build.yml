@@ -36,7 +36,17 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller csv-splitter.py --clean --noupx --noconsole --noconfirm --onefile --windowed
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            ADD_DATA="app_icon.ico;."
+            ICON="app_icon.ico"
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            ADD_DATA="app_icon.icns:."
+            ICON="app_icon.icns"
+          else
+            ADD_DATA="app_icon.ico:."
+            ICON="app_icon.ico"
+          fi
+          pyinstaller csv-splitter.py --clean --noupx --noconsole --noconfirm --onefile --windowed --icon="$ICON" --add-data "$ADD_DATA"
 
       - name: Rename artifact
         run: |
