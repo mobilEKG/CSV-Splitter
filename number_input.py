@@ -7,6 +7,7 @@ import locale
 
 locale.setlocale(locale.LC_ALL, '')
 
+
 class NumberLineEdit(QLineEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -43,4 +44,3 @@ class NumberLineEdit(QLineEdit):
     def value(self):
         digits = ''.join(filter(str.isdigit, self.text()))
         return int(digits) if digits else 0
-
