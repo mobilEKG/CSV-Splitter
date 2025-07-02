@@ -3,6 +3,7 @@ name: Build CSV Splitter
 on:
   push:
     branches: [main]
+  pull_request:
   release:
     types: [created]
 
@@ -28,6 +29,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
+          pip install pytest
+
+      - name: Run tests
+        run: pytest -q
 
       - name: Build executable
         run: |
