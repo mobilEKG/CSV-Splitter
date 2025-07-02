@@ -1,12 +1,22 @@
 import sys
 import os
 from PySide6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog,
-    QLabel, QGroupBox, QCheckBox, QMessageBox, QProgressBar, QHBoxLayout
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QPushButton,
+    QFileDialog,
+    QLabel,
+    QGroupBox,
+    QCheckBox,
+    QMessageBox,
+    QProgressBar,
+    QHBoxLayout,
 )
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt
 from number_input import NumberLineEdit
+
 
 class CSVSplitter(QWidget):
     DEFAULT_WINDOW_WIDTH = 500
@@ -18,7 +28,10 @@ class CSVSplitter(QWidget):
         super().__init__()
 
         self.setWindowTitle("CSV Splitter")
-        self.setFixedSize(self.DEFAULT_WINDOW_WIDTH, self.DEFAULT_WINDOW_HEIGHT)
+        self.setFixedSize(
+            self.DEFAULT_WINDOW_WIDTH,
+            self.DEFAULT_WINDOW_HEIGHT,
+        )
 
         self.layout = QVBoxLayout()
 
@@ -27,9 +40,14 @@ class CSVSplitter(QWidget):
         section1_layout = QVBoxLayout()
         section1_layout.setAlignment(Qt.AlignTop)
         section1_layout.setSpacing(self.DEFAULT_SPACE)
-        section1_layout.setContentsMargins(self.DEFAULT_SPACE, self.DEFAULT_SPACE, self.DEFAULT_SPACE, self.DEFAULT_SPACE)
+        section1_layout.setContentsMargins(
+            self.DEFAULT_SPACE,
+            self.DEFAULT_SPACE,
+            self.DEFAULT_SPACE,
+            self.DEFAULT_SPACE,
+        )
         section1.setLayout(section1_layout)
-        self.layout.addWidget(section1)     
+        self.layout.addWidget(section1)
 
         self.file_label = QLabel("No file selected")
         self.file_label.setWordWrap(True)
@@ -44,7 +62,12 @@ class CSVSplitter(QWidget):
         section2_layout = QVBoxLayout()
         section2_layout.setAlignment(Qt.AlignTop)
         section2_layout.setSpacing(self.DEFAULT_SPACE)
-        section2_layout.setContentsMargins(self.DEFAULT_SPACE, self.DEFAULT_SPACE, self.DEFAULT_SPACE, self.DEFAULT_SPACE)        
+        section2_layout.setContentsMargins(
+            self.DEFAULT_SPACE,
+            self.DEFAULT_SPACE,
+            self.DEFAULT_SPACE,
+            self.DEFAULT_SPACE,
+        )
         section2.setLayout(section2_layout)
         self.layout.addWidget(section2)
 
@@ -85,12 +108,21 @@ class CSVSplitter(QWidget):
         self.cancel_requested = False
 
     def select_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", "CSV Files (*.csv);;Text Files (*.txt);;XML Files (*.xml);;All Files (*)")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select File",
+            "",
+            "CSV Files (*.csv);;Text Files (*.txt);;XML Files (*.xml);;"
+            "All Files (*)",
+        )
         if file_path:
             self.file_path = file_path
             self.file_label.setText(os.path.basename(file_path))
             self.total_lines = self.get_total_lines(file_path)
-            self.file_label.setText(f"Selected File: {os.path.basename(file_path)} ({self.total_lines:,} lines)")
+            self.file_label.setText(
+                f"Selected File: {os.path.basename(file_path)} "
+                f"({self.total_lines:,} lines)"
+            )
 
     def get_total_lines(self, file_path):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -118,8 +150,13 @@ class CSVSplitter(QWidget):
         # self.progress_bar.setVisible(True)
 
         try:
-            with open(self.file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                header = f.readline() if include_header else ''
+            with open(
+                self.file_path,
+                "r",
+                encoding="utf-8",
+                errors="ignore",
+            ) as f:
+                header = f.readline() if include_header else ""
                 self.progress_bar.setValue(1 if include_header else 0)
                 lines = []
                 file_index = 1
@@ -127,7 +164,11 @@ class CSVSplitter(QWidget):
 
                 for line_num, line in enumerate(f, start=1):
                     if self.cancel_requested:
-                        QMessageBox.information(self, "Cancelled", "File splitting has been cancelled.")
+                        QMessageBox.information(
+                            self,
+                            "Cancelled",
+                            "File splitting has been cancelled.",
+                        )
                         # self.progress_bar.setVisible(False)
                         self.cancel_button.setEnabled(False)
                         return
@@ -138,8 +179,15 @@ class CSVSplitter(QWidget):
 
                     if len(lines) >= lines_per_file:
                         written_files += 1
-                        output_path = os.path.join(output_dir, f"{name}_{file_index}_of_XXX{ext}")
-                        with open(output_path, 'w', encoding='utf-8') as out_file:
+                        output_path = os.path.join(
+                            output_dir,
+                            f"{name}_{file_index}_of_XXX{ext}",
+                        )
+                        with open(
+                            output_path,
+                            "w",
+                            encoding="utf-8",
+                        ) as out_file:
                             if include_header:
                                 out_file.write(header)
                             out_file.writelines(lines)
@@ -148,23 +196,47 @@ class CSVSplitter(QWidget):
 
                 if lines and not self.cancel_requested:
                     written_files += 1
-                    output_path = os.path.join(output_dir, f"{name}_{file_index}_of_XXX{ext}")
-                    with open(output_path, 'w', encoding='utf-8') as out_file:
+                    output_path = os.path.join(
+                        output_dir,
+                        f"{name}_{file_index}_of_XXX{ext}",
+                    )
+                    with open(
+                        output_path,
+                        "w",
+                        encoding="utf-8",
+                    ) as out_file:
                         if include_header:
                             out_file.write(header)
                         out_file.writelines(lines)
 
             if not self.cancel_requested:
                 for i in range(1, written_files + 1):
-                    old_name = os.path.join(output_dir, f"{name}_{i}_of_XXX{ext}")
-                    new_name = os.path.join(output_dir, f"{name}_{i}_of_{written_files}{ext}")
+                    old_name = os.path.join(
+                        output_dir,
+                        f"{name}_{i}_of_XXX{ext}",
+                    )
+                    new_name = os.path.join(
+                        output_dir,
+                        f"{name}_{i}_of_{written_files}{ext}",
+                    )
                     os.rename(old_name, new_name)
 
-                QMessageBox.information(self, "Success", f"File successfully split into {written_files} parts.")
+                # When no header is included the final loop may leave the
+                # progress bar one step shy of the maximum.  Explicitly set the
+                # value to ensure it reaches 100%.
+                if self.progress_bar.value() < self.progress_bar.maximum():
+                    self.progress_bar.setValue(self.progress_bar.maximum())
+
+                QMessageBox.information(
+                    self,
+                    "Success",
+                    f"File successfully split into {written_files} parts.",
+                )
 
         finally:
             # self.progress_bar.setVisible(False)
             self.cancel_button.setEnabled(False)
+
 
 def get_platform_icon():
     if getattr(sys, 'frozen', False):  # we are running in a bundle
@@ -176,9 +248,10 @@ def get_platform_icon():
         icon_path = os.path.join(basedir, 'app_icon.ico')
     else:
         icon_path = os.path.join(basedir, 'app_icon.icns')
-    
+
     return QIcon(icon_path)
-    
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     icon = get_platform_icon()
@@ -186,5 +259,5 @@ if __name__ == "__main__":
 
     splitter = CSVSplitter()
     splitter.show()
-    
+
     sys.exit(app.exec())
