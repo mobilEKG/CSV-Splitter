@@ -23,11 +23,9 @@ def test_split_csv_file(tmp_path):
     ]
     assert [os.path.abspath(p) for p in output_files] == [str(p) for p in expected_names]
 
-    # Verify contents of the first and last file
-    first = expected_names[0].read_text().splitlines()
-    last = expected_names[-1].read_text().splitlines()
+    # Verify contents of each part
+    parts = [p.read_text().splitlines() for p in expected_names]
 
-    assert first[0] == "header1,header2"
-    assert first[1:] == ["val0,val0", "val1,val1"]
-    assert last[0] == "header1,header2"
-    assert last[1:] == ["val4,val4"]
+    assert parts[0] == ["header1,header2", "val0,val0", "val1,val1"]
+    assert parts[1] == ["header1,header2", "val2,val2", "val3,val3"]
+    assert parts[2] == ["header1,header2", "val4,val4"]
