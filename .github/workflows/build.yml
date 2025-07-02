@@ -47,6 +47,7 @@ jobs:
             ICON="app_icon.ico"
           fi
           pyinstaller csv-splitter.py --clean --noupx --noconsole --noconfirm --onefile --windowed --icon="$ICON" --add-data "$ADD_DATA"
+        shell: bash
 
       - name: Rename artifact
         run: |
