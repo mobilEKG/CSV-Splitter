@@ -160,6 +160,12 @@ class CSVSplitter(QWidget):
                     new_name = os.path.join(output_dir, f"{name}_{i}_of_{written_files}{ext}")
                     os.rename(old_name, new_name)
 
+                # When no header is included the final loop may leave the
+                # progress bar one step shy of the maximum.  Explicitly set the
+                # value to ensure it reaches 100%.
+                if self.progress_bar.value() < self.progress_bar.maximum():
+                    self.progress_bar.setValue(self.progress_bar.maximum())
+
                 QMessageBox.information(self, "Success", f"File successfully split into {written_files} parts.")
 
         finally:
