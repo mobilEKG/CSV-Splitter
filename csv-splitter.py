@@ -21,16 +21,29 @@ from split_logic import SplitCancelled, count_lines, split_csv_file
 
 class CountLinesWorker(QObject):
     finished = Signal(str, int)
+    cancelled = Signal(str)
     error = Signal(str, str)
 
     def __init__(self, file_path):
         super().__init__()
         self.file_path = file_path
+        self.cancel_requested = False
+
+    def request_cancel(self):
+        self.cancel_requested = True
 
     @Slot()
     def run(self):
         try:
-            self.finished.emit(self.file_path, count_lines(self.file_path))
+            self.finished.emit(
+                self.file_path,
+                count_lines(
+                    self.file_path,
+                    should_cancel=lambda: self.cancel_requested,
+                ),
+            )
+        except SplitCancelled:
+            self.cancelled.emit(self.file_path)
         except Exception as exc:
             self.error.emit(self.file_path, str(exc))
 
@@ -186,10 +199,13 @@ class CSVSplitter(QWidget):
         self.count_worker.moveToThread(self.count_thread)
         self.count_thread.started.connect(self.count_worker.run)
         self.count_worker.finished.connect(self.handle_count_finished)
+        self.count_worker.cancelled.connect(self.handle_count_cancelled)
         self.count_worker.error.connect(self.handle_count_error)
         self.count_worker.finished.connect(self.count_thread.quit)
+        self.count_worker.cancelled.connect(self.count_thread.quit)
         self.count_worker.error.connect(self.count_thread.quit)
         self.count_worker.finished.connect(self.count_worker.deleteLater)
+        self.count_worker.cancelled.connect(self.count_worker.deleteLater)
         self.count_worker.error.connect(self.count_worker.deleteLater)
         self.count_thread.finished.connect(self.count_thread.deleteLater)
         self.count_thread.finished.connect(self.clear_count_worker)
@@ -212,6 +228,15 @@ class CSVSplitter(QWidget):
         )
         self.split_button.setEnabled(True)
 
+    def handle_count_cancelled(self, file_path):
+        if self.is_closing or file_path != self.file_path:
+            return
+
+        self.file_path = ""
+        self.total_lines = 0
+        self.file_label.setText("No file selected")
+        self.split_button.setEnabled(False)
+
     def handle_count_error(self, file_path, message):
         if self.is_closing or file_path != self.file_path:
             return
@@ -230,8 +255,13 @@ class CSVSplitter(QWidget):
         if self.split_worker:
             self.split_worker.request_cancel()
 
+    def cancel_count(self):
+        if self.count_worker:
+            self.count_worker.request_cancel()
+
     def closeEvent(self, event):
         self.is_closing = True
+        self.cancel_count()
         self.cancel_split()
         self.wait_for_worker_threads()
         super().closeEvent(event)

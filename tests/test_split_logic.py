@@ -5,7 +5,7 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import split_logic
-from split_logic import split_csv_file
+from split_logic import SplitCancelled, count_lines, split_csv_file
 
 
 def test_split_csv_file(tmp_path):
@@ -131,3 +131,17 @@ def test_split_csv_file_finalizes_without_hard_links(tmp_path, monkeypatch):
         "row2",
     ]
     assert not any(p.name.startswith(".sample_") for p in tmp_path.iterdir())
+
+
+def test_count_lines_can_be_cancelled(tmp_path):
+    input_file = tmp_path / "sample.csv"
+    input_file.write_text("header\nrow1\nrow2\n")
+    cancel_checks = 0
+
+    def cancel_after_first_iteration():
+        nonlocal cancel_checks
+        cancel_checks += 1
+        return cancel_checks > 1
+
+    with pytest.raises(SplitCancelled, match="cancelled"):
+        count_lines(str(input_file), should_cancel=cancel_after_first_iteration)

@@ -105,6 +105,10 @@ class FakeSplitWorker:
         self.cancel_requested = True
 
 
+class FakeCountWorker(FakeSplitWorker):
+    pass
+
+
 class FakeThread:
     def __init__(self, running=True):
         self.running = running
@@ -128,6 +132,7 @@ def test_close_event_cancels_and_waits_for_running_split(monkeypatch):
     splitter.is_closing = False
     splitter.split_worker = FakeSplitWorker()
     splitter.split_thread = FakeThread()
+    splitter.count_worker = None
     splitter.count_thread = FakeThread(running=False)
     event = FakeEvent()
 
@@ -139,6 +144,48 @@ def test_close_event_cancels_and_waits_for_running_split(monkeypatch):
     assert splitter.split_thread.wait_called
     assert not splitter.split_thread.isRunning()
     assert event.accepted
+
+
+def test_close_event_cancels_and_waits_for_running_count(monkeypatch):
+    gui = load_gui_module(monkeypatch)
+    splitter = gui.CSVSplitter.__new__(gui.CSVSplitter)
+    splitter.is_closing = False
+    splitter.count_worker = FakeCountWorker()
+    splitter.count_thread = FakeThread()
+    splitter.split_worker = None
+    splitter.split_thread = None
+    event = FakeEvent()
+
+    splitter.closeEvent(event)
+
+    assert splitter.is_closing
+    assert splitter.count_worker.cancel_requested
+    assert splitter.count_thread.quit_called
+    assert splitter.count_thread.wait_called
+    assert not splitter.count_thread.isRunning()
+    assert event.accepted
+
+
+def test_count_worker_emits_cancelled_when_count_lines_is_cancelled(monkeypatch):
+    gui = load_gui_module(monkeypatch)
+
+    def fake_count_lines(file_path, should_cancel=None):
+        assert file_path == "sample.csv"
+        assert should_cancel()
+        raise gui.SplitCancelled("cancelled")
+
+    monkeypatch.setattr(gui, "count_lines", fake_count_lines)
+    worker = gui.CountLinesWorker("sample.csv")
+    cancelled_files = []
+    errors = []
+    worker.cancelled.connect(cancelled_files.append)
+    worker.error.connect(lambda *args: errors.append(args))
+
+    worker.request_cancel()
+    worker.run()
+
+    assert cancelled_files == ["sample.csv"]
+    assert errors == []
 
 
 def test_split_terminal_handlers_suppress_messages_during_close(monkeypatch):

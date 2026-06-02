@@ -11,10 +11,37 @@ class SplitCancelled(RuntimeError):
     """Raised when a split operation is cancelled before completion."""
 
 
-def count_lines(file_path: str, encoding: str = "utf-8-sig") -> int:
-    """Count lines in a text file using strict decoding."""
+def count_lines(
+    file_path: str,
+    encoding: str = "utf-8-sig",
+    should_cancel: Optional[CancelCallback] = None,
+) -> int:
+    """Count lines in a text file using strict decoding.
+
+    Parameters
+    ----------
+    file_path: str
+        Path to the input file.
+    encoding: str, default "utf-8-sig"
+        Text encoding used to read the file. Decode errors are raised instead
+        of silently dropping bytes.
+    should_cancel: callable, optional
+        Called before and during counting. When it returns True,
+        SplitCancelled is raised.
+    """
+
+    def check_cancelled() -> None:
+        if should_cancel and should_cancel():
+            raise SplitCancelled("Line count cancelled")
+
+    total_lines = 0
+    check_cancelled()
     with open(file_path, "r", encoding=encoding) as f:
-        return sum(1 for _ in f)
+        for _line in f:
+            check_cancelled()
+            total_lines += 1
+    check_cancelled()
+    return total_lines
 
 
 def split_csv_file(
