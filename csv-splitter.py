@@ -159,6 +159,7 @@ class CSVSplitter(QWidget):
         self.count_worker = None
         self.split_thread = None
         self.split_worker = None
+        self.is_closing = False
 
     def select_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -197,10 +198,11 @@ class CSVSplitter(QWidget):
     def clear_count_worker(self):
         self.count_thread = None
         self.count_worker = None
-        self.select_button.setEnabled(True)
+        if not self.is_closing:
+            self.select_button.setEnabled(True)
 
     def handle_count_finished(self, file_path, total_lines):
-        if file_path != self.file_path:
+        if self.is_closing or file_path != self.file_path:
             return
 
         self.total_lines = total_lines
@@ -211,7 +213,7 @@ class CSVSplitter(QWidget):
         self.split_button.setEnabled(True)
 
     def handle_count_error(self, file_path, message):
-        if file_path != self.file_path:
+        if self.is_closing or file_path != self.file_path:
             return
 
         self.file_path = ""
@@ -227,6 +229,18 @@ class CSVSplitter(QWidget):
     def cancel_split(self):
         if self.split_worker:
             self.split_worker.request_cancel()
+
+    def closeEvent(self, event):
+        self.is_closing = True
+        self.cancel_split()
+        self.wait_for_worker_threads()
+        super().closeEvent(event)
+
+    def wait_for_worker_threads(self):
+        for thread in (self.split_thread, self.count_thread):
+            if thread and thread.isRunning():
+                thread.quit()
+                thread.wait()
 
     def split_file(self):
         if not self.file_path:
@@ -280,6 +294,9 @@ class CSVSplitter(QWidget):
         if self.progress_bar.value() < self.progress_bar.maximum():
             self.progress_bar.setValue(self.progress_bar.maximum())
 
+        if self.is_closing:
+            return
+
         QMessageBox.information(
             self,
             "Success",
@@ -287,6 +304,9 @@ class CSVSplitter(QWidget):
         )
 
     def handle_split_cancelled(self):
+        if self.is_closing:
+            return
+
         QMessageBox.information(
             self,
             "Cancelled",
@@ -294,11 +314,16 @@ class CSVSplitter(QWidget):
         )
 
     def handle_split_error(self, message):
+        if self.is_closing:
+            return
+
         QMessageBox.critical(self, "Error", f"Could not split file:\n{message}")
 
     def clear_split_worker(self):
         self.split_thread = None
         self.split_worker = None
+        if self.is_closing:
+            return
         self.cancel_button.setEnabled(False)
         self.select_button.setEnabled(True)
         self.split_button.setEnabled(bool(self.file_path))
