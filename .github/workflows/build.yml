@@ -35,6 +35,7 @@ jobs:
         run: pytest -q
 
       - name: Build executable
+        shell: bash
         run: |
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             ADD_DATA="app_icon.ico;."

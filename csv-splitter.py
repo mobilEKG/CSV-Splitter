@@ -14,8 +14,58 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
 )
 from PySide6.QtGui import QIcon
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from number_input import NumberLineEdit
+from split_logic import SplitCancelled, count_lines, split_csv_file
+
+
+class CountLinesWorker(QObject):
+    finished = Signal(str, int)
+    error = Signal(str, str)
+
+    def __init__(self, file_path):
+        super().__init__()
+        self.file_path = file_path
+
+    @Slot()
+    def run(self):
+        try:
+            self.finished.emit(self.file_path, count_lines(self.file_path))
+        except Exception as exc:
+            self.error.emit(self.file_path, str(exc))
+
+
+class SplitFileWorker(QObject):
+    progress = Signal(int)
+    finished = Signal(list)
+    cancelled = Signal()
+    error = Signal(str)
+
+    def __init__(self, file_path, lines_per_file, include_header):
+        super().__init__()
+        self.file_path = file_path
+        self.lines_per_file = lines_per_file
+        self.include_header = include_header
+        self.cancel_requested = False
+
+    def request_cancel(self):
+        self.cancel_requested = True
+
+    @Slot()
+    def run(self):
+        try:
+            output_files = split_csv_file(
+                self.file_path,
+                self.lines_per_file,
+                self.include_header,
+                progress_callback=self.progress.emit,
+                should_cancel=lambda: self.cancel_requested,
+            )
+            self.finished.emit(output_files)
+        except SplitCancelled:
+            self.cancelled.emit()
+        except Exception as exc:
+            self.error.emit(str(exc))
 
 
 class CSVSplitter(QWidget):
@@ -105,7 +155,10 @@ class CSVSplitter(QWidget):
 
         self.file_path = ""
         self.total_lines = 0
-        self.cancel_requested = False
+        self.count_thread = None
+        self.count_worker = None
+        self.split_thread = None
+        self.split_worker = None
 
     def select_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -117,125 +170,138 @@ class CSVSplitter(QWidget):
         )
         if file_path:
             self.file_path = file_path
-            self.file_label.setText(os.path.basename(file_path))
-            self.total_lines = self.get_total_lines(file_path)
+            self.total_lines = 0
+            self.progress_bar.setValue(0)
             self.file_label.setText(
-                f"Selected File: {os.path.basename(file_path)} "
-                f"({self.total_lines:,} lines)"
+                f"Counting lines in {os.path.basename(file_path)}..."
             )
+            self.select_button.setEnabled(False)
+            self.split_button.setEnabled(False)
+            self.start_count_lines(file_path)
 
-    def get_total_lines(self, file_path):
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            return sum(1 for _ in f)
+    def start_count_lines(self, file_path):
+        self.count_thread = QThread(self)
+        self.count_worker = CountLinesWorker(file_path)
+        self.count_worker.moveToThread(self.count_thread)
+        self.count_thread.started.connect(self.count_worker.run)
+        self.count_worker.finished.connect(self.handle_count_finished)
+        self.count_worker.error.connect(self.handle_count_error)
+        self.count_worker.finished.connect(self.count_thread.quit)
+        self.count_worker.error.connect(self.count_thread.quit)
+        self.count_worker.finished.connect(self.count_worker.deleteLater)
+        self.count_worker.error.connect(self.count_worker.deleteLater)
+        self.count_thread.finished.connect(self.count_thread.deleteLater)
+        self.count_thread.finished.connect(self.clear_count_worker)
+        self.count_thread.start()
+
+    def clear_count_worker(self):
+        self.count_thread = None
+        self.count_worker = None
+        self.select_button.setEnabled(True)
+
+    def handle_count_finished(self, file_path, total_lines):
+        if file_path != self.file_path:
+            return
+
+        self.total_lines = total_lines
+        self.file_label.setText(
+            f"Selected File: {os.path.basename(file_path)} "
+            f"({self.total_lines:,} lines)"
+        )
+        self.split_button.setEnabled(True)
+
+    def handle_count_error(self, file_path, message):
+        if file_path != self.file_path:
+            return
+
+        self.file_path = ""
+        self.total_lines = 0
+        self.file_label.setText("No file selected")
+        self.split_button.setEnabled(False)
+        QMessageBox.critical(
+            self,
+            "Error",
+            f"Could not read {os.path.basename(file_path)}:\n{message}",
+        )
 
     def cancel_split(self):
-        self.cancel_requested = True
+        if self.split_worker:
+            self.split_worker.request_cancel()
 
     def split_file(self):
         if not self.file_path:
             QMessageBox.warning(self, "Warning", "Please select a file first.")
             return
 
-        self.cancel_requested = False
-        self.cancel_button.setEnabled(True)
         lines_per_file = self.line_input.value()
-        include_header = self.include_header_checkbox.isChecked()
+        if lines_per_file <= 0:
+            QMessageBox.warning(
+                self,
+                "Warning",
+                "Lines per file must be a positive number.",
+            )
+            return
 
-        base_name = os.path.basename(self.file_path)
-        name, ext = os.path.splitext(base_name)
-        output_dir = os.path.dirname(self.file_path)
+        include_header = self.include_header_checkbox.isChecked()
 
         self.progress_bar.setMaximum(self.total_lines)
         self.progress_bar.setValue(0)
-        # self.progress_bar.setVisible(True)
+        self.select_button.setEnabled(False)
+        self.split_button.setEnabled(False)
+        self.cancel_button.setEnabled(True)
 
-        try:
-            with open(
-                self.file_path,
-                "r",
-                encoding="utf-8",
-                errors="ignore",
-            ) as f:
-                header = f.readline() if include_header else ""
-                self.progress_bar.setValue(1 if include_header else 0)
-                lines = []
-                file_index = 1
-                written_files = 0
+        self.split_thread = QThread(self)
+        self.split_worker = SplitFileWorker(
+            self.file_path,
+            lines_per_file,
+            include_header,
+        )
+        self.split_worker.moveToThread(self.split_thread)
+        self.split_thread.started.connect(self.split_worker.run)
+        self.split_worker.progress.connect(self.handle_split_progress)
+        self.split_worker.finished.connect(self.handle_split_finished)
+        self.split_worker.cancelled.connect(self.handle_split_cancelled)
+        self.split_worker.error.connect(self.handle_split_error)
+        self.split_worker.finished.connect(self.split_thread.quit)
+        self.split_worker.cancelled.connect(self.split_thread.quit)
+        self.split_worker.error.connect(self.split_thread.quit)
+        self.split_worker.finished.connect(self.split_worker.deleteLater)
+        self.split_worker.cancelled.connect(self.split_worker.deleteLater)
+        self.split_worker.error.connect(self.split_worker.deleteLater)
+        self.split_thread.finished.connect(self.split_thread.deleteLater)
+        self.split_thread.finished.connect(self.clear_split_worker)
+        self.split_thread.start()
 
-                for line_num, line in enumerate(f, start=1):
-                    if self.cancel_requested:
-                        QMessageBox.information(
-                            self,
-                            "Cancelled",
-                            "File splitting has been cancelled.",
-                        )
-                        # self.progress_bar.setVisible(False)
-                        self.cancel_button.setEnabled(False)
-                        return
+    def handle_split_progress(self, lines_processed):
+        next_value = self.progress_bar.value() + lines_processed
+        self.progress_bar.setValue(min(next_value, self.progress_bar.maximum()))
 
-                    lines.append(line)
-                    self.progress_bar.setValue(self.progress_bar.value() + 1)
-                    QApplication.processEvents()
+    def handle_split_finished(self, output_files):
+        if self.progress_bar.value() < self.progress_bar.maximum():
+            self.progress_bar.setValue(self.progress_bar.maximum())
 
-                    if len(lines) >= lines_per_file:
-                        written_files += 1
-                        output_path = os.path.join(
-                            output_dir,
-                            f"{name}_{file_index}_of_XXX{ext}",
-                        )
-                        with open(
-                            output_path,
-                            "w",
-                            encoding="utf-8",
-                        ) as out_file:
-                            if include_header:
-                                out_file.write(header)
-                            out_file.writelines(lines)
-                        lines = []
-                        file_index += 1
+        QMessageBox.information(
+            self,
+            "Success",
+            f"File successfully split into {len(output_files)} parts.",
+        )
 
-                if lines and not self.cancel_requested:
-                    written_files += 1
-                    output_path = os.path.join(
-                        output_dir,
-                        f"{name}_{file_index}_of_XXX{ext}",
-                    )
-                    with open(
-                        output_path,
-                        "w",
-                        encoding="utf-8",
-                    ) as out_file:
-                        if include_header:
-                            out_file.write(header)
-                        out_file.writelines(lines)
+    def handle_split_cancelled(self):
+        QMessageBox.information(
+            self,
+            "Cancelled",
+            "File splitting has been cancelled.",
+        )
 
-            if not self.cancel_requested:
-                for i in range(1, written_files + 1):
-                    old_name = os.path.join(
-                        output_dir,
-                        f"{name}_{i}_of_XXX{ext}",
-                    )
-                    new_name = os.path.join(
-                        output_dir,
-                        f"{name}_{i}_of_{written_files}{ext}",
-                    )
-                    os.rename(old_name, new_name)
+    def handle_split_error(self, message):
+        QMessageBox.critical(self, "Error", f"Could not split file:\n{message}")
 
-                # When no header is included the final loop may leave the
-                # progress bar one step shy of the maximum.  Explicitly set the
-                # value to ensure it reaches 100%.
-                if self.progress_bar.value() < self.progress_bar.maximum():
-                    self.progress_bar.setValue(self.progress_bar.maximum())
-
-                QMessageBox.information(
-                    self,
-                    "Success",
-                    f"File successfully split into {written_files} parts.",
-                )
-
-        finally:
-            # self.progress_bar.setVisible(False)
-            self.cancel_button.setEnabled(False)
+    def clear_split_worker(self):
+        self.split_thread = None
+        self.split_worker = None
+        self.cancel_button.setEnabled(False)
+        self.select_button.setEnabled(True)
+        self.split_button.setEnabled(bool(self.file_path))
 
 
 def get_platform_icon():
