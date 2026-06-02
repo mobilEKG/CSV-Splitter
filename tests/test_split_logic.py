@@ -4,6 +4,7 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import split_logic
 from split_logic import split_csv_file
 
 
@@ -104,3 +105,29 @@ def test_split_csv_file_cleans_up_temporary_files_when_cancelled(tmp_path):
         )
 
     assert sorted(p.name for p in tmp_path.iterdir()) == ["sample.csv"]
+
+
+def test_split_csv_file_finalizes_without_hard_links(tmp_path, monkeypatch):
+    input_file = tmp_path / "sample.csv"
+    input_file.write_text("header\nrow1\nrow2\n")
+
+    def fail_if_hard_linked(_source, _destination):
+        raise OSError("hard links are not supported")
+
+    monkeypatch.setattr(split_logic.os, "link", fail_if_hard_linked)
+
+    output_files = split_csv_file(str(input_file), lines_per_file=1)
+
+    assert [os.path.basename(p) for p in output_files] == [
+        "sample_1_of_2.csv",
+        "sample_2_of_2.csv",
+    ]
+    assert (tmp_path / "sample_1_of_2.csv").read_text().splitlines() == [
+        "header",
+        "row1",
+    ]
+    assert (tmp_path / "sample_2_of_2.csv").read_text().splitlines() == [
+        "header",
+        "row2",
+    ]
+    assert not any(p.name.startswith(".sample_") for p in tmp_path.iterdir())

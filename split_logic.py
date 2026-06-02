@@ -118,9 +118,10 @@ def split_csv_file(
             )
 
         for temporary_path, output_path in zip(temporary_paths, output_paths):
-            os.link(temporary_path, output_path)
+            if os.path.exists(output_path):
+                raise FileExistsError(f"Output file already exists: {output_path}")
+            os.replace(temporary_path, output_path)
             finalized_paths.append(output_path)
-            os.remove(temporary_path)
 
         return output_paths
     except Exception:
