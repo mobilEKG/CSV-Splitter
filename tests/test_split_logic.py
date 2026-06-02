@@ -107,6 +107,42 @@ def test_split_csv_file_cleans_up_temporary_files_when_cancelled(tmp_path):
     assert sorted(p.name for p in tmp_path.iterdir()) == ["sample.csv"]
 
 
+def test_split_csv_file_cleans_up_temporary_file_when_write_fails(tmp_path, monkeypatch):
+    input_file = tmp_path / "sample.csv"
+    input_file.write_text("header\nrow1\n")
+    real_open = open
+
+    class FailingWriter:
+        def __init__(self, wrapped):
+            self.wrapped = wrapped
+
+        def __enter__(self):
+            self.wrapped.__enter__()
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return self.wrapped.__exit__(exc_type, exc, traceback)
+
+        def write(self, _text):
+            raise OSError("disk full")
+
+        def writelines(self, _lines):
+            raise OSError("disk full")
+
+    def fail_temp_writes(path, mode="r", *args, **kwargs):
+        opened_file = real_open(path, mode, *args, **kwargs)
+        if mode == "x" and os.path.basename(path).startswith(".sample_"):
+            return FailingWriter(opened_file)
+        return opened_file
+
+    monkeypatch.setattr(split_logic, "open", fail_temp_writes, raising=False)
+
+    with pytest.raises(OSError, match="disk full"):
+        split_csv_file(str(input_file), lines_per_file=1)
+
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["sample.csv"]
+
+
 def test_split_csv_file_finalizes_without_hard_links(tmp_path, monkeypatch):
     input_file = tmp_path / "sample.csv"
     input_file.write_text("header\nrow1\nrow2\n")

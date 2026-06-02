@@ -102,10 +102,10 @@ def split_csv_file(
             f".{name}_{file_index}_of_{run_id}.tmp{ext}",
         )
         with open(temporary_path, "x", encoding=output_encoding) as out_file:
+            temporary_paths.append(temporary_path)
             if include_header:
                 out_file.write(header)
             out_file.writelines(lines)
-        temporary_paths.append(temporary_path)
         return temporary_path
 
     try:
