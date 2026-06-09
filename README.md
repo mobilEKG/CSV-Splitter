@@ -1,45 +1,70 @@
-# CSV-Splitter
-CSV Splitter is an open-source GUI tool for splitting large CSV and other text-based files into smaller, easier-to-open parts.
+# CSV Splitter: Open Source Large CSV File Splitter for Windows
 
-It is built for cases where a file is too large to work with comfortably in Microsoft Excel. Excel worksheets are limited to 1,048,576 rows, so splitting a large source file into smaller chunks helps keep each output file within a practical worksheet size.
+CSV Splitter is a free, open-source desktop app for splitting large CSV, TXT, XML, and log files into smaller parts that are easier to open in Excel and other tools.
+
+[Download the latest Windows executable](https://github.com/mobilEKG/CSV-Splitter/releases/latest) or run from source with Python.
+
+## Why Use CSV Splitter?
+
+Microsoft Excel worksheets are limited to 1,048,576 rows. When a source file is larger than that, CSV Splitter lets you choose a practical row count and generate numbered output files that stay easier to open, inspect, and share.
+
+Use it when you need to:
+
+- Split a large CSV file before Excel's 1,048,576-row worksheet limit gets in the way.
+- Break large text-based exports into smaller numbered files.
+- Keep the original header row at the top of every generated part.
+- Use a simple Windows desktop GUI instead of command-line scripts.
 
 ## Screenshot
+
 ![CSV Splitter main window showing file selection, line count options, header inclusion, and split controls](images/Screenshot.png)
 
 ## Features
-- Split CSV, TXT, XML, and other text-based files into numbered parts.
+
+- Split CSV, TXT, XML, log, and other text-based files into numbered parts.
 - Choose how many data lines should go into each output file.
 - Optionally copy the source header row into every generated part.
-- Use the desktop GUI without command-line options.
+- Prevent accidental overwrites of existing output files.
+- Cancel long-running line counts or split jobs.
+- Build a standalone Windows executable with PyInstaller.
 
-## Installation
+## Download For Windows
+
+1. Open the [latest release](https://github.com/mobilEKG/CSV-Splitter/releases/latest).
+2. Download `CSV_Splitter_windows.exe`.
+3. Run the executable and select the file you want to split.
+
+## Run From Source
+
 Install the required Python dependencies with:
 
-```
+```bash
 pip install -r requirements.txt
 ```
 
-## Usage
-Launch the graphical interface by running:
+Launch the graphical interface with:
 
-```
+```bash
 python csv-splitter.py
 ```
 
 Set "Lines per file" below your target row limit. When "Include header in each part" is enabled, the header row is added to each output file in addition to the selected data-line count.
 
-## Build a Windows executable
-```
+## Build A Windows Executable
+
+```bash
 pyinstaller csv-splitter.py --clean --noupx --noconsole --noconfirm --onefile --windowed --icon=app_icon.ico --add-data "app_icon.ico;."
 ```
 
 ## Testing
+
 Install pytest, then run the test suite:
 
-```
+```bash
 pip install pytest
 pytest -q
 ```
 
 ## License
+
 This project is released under the MIT License.
