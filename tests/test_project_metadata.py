@@ -12,7 +12,7 @@ def test_readme_keeps_primary_positioning_and_download_cta():
     )
     assert "Download the latest Windows executable" in readme
     assert "Excel's 1,048,576-row worksheet limit" in readme
-    assert "large CSV file splitter" in readme.lower()
+    assert "large csv file splitter" in readme.lower()
 
 
 def test_landing_page_has_search_and_social_metadata():
