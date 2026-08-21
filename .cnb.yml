@@ -87,6 +87,7 @@ $:
             apt-get update
             apt-get install -y --no-install-recommends \
               binutils \
+              curl \
               libegl1 \
               libgl1 \
               libopengl0 \
@@ -115,6 +116,19 @@ $:
               --icon=app_icon.ico --add-data "app_icon.ico:."
             mkdir -p dist_upload
             mv dist/csv-splitter dist_upload/CSV_Splitter_linux
+        - name: Carry over existing platform packages
+          script: |
+            set -eu
+            # This migration release reuses the public binaries from the
+            # GitHub backup because hosted CNB runners build Linux only.
+            # Future Windows and macOS updates need matching custom nodes.
+            release_url="https://github.com/mobilEKG/CSV-Splitter/releases/download/v0.2.1"
+            curl --fail --location --retry 3 \
+              --output dist_upload/CSV_Splitter_macos \
+              "${release_url}/CSV_Splitter_macos"
+            curl --fail --location --retry 3 \
+              --output dist_upload/CSV_Splitter_windows.exe \
+              "${release_url}/CSV_Splitter_windows.exe"
         - name: Create CNB release
           type: git:release
           options:
@@ -124,12 +138,15 @@ $:
             description: |
               CSV Splitter ${CNB_BRANCH} release.
 
-              This release contains the Linux executable. Windows and macOS
-              packages require matching custom CNB build nodes.
+              This release contains the Linux executable built by CNB and the
+              existing Windows and macOS packages from the GitHub backup.
             latest: true
-        - name: Upload Linux release asset
+        - name: Upload release assets
           # This is CNB's official release and commit attachment plugin.
           image: cnbcool/attachments:latest
           settings:
             attachments:
-              - /workspace/dist_upload/CSV_Splitter_linux
+              # Attachment paths are relative to the pipeline workspace.
+              - "./dist_upload/CSV_Splitter_linux"
+              - "./dist_upload/CSV_Splitter_macos"
+              - "./dist_upload/CSV_Splitter_windows.exe"
