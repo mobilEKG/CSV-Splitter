@@ -14,6 +14,8 @@ def test_readme_keeps_primary_positioning_and_download_cta():
     assert "large CSV file" in readme
     assert "https://github.com/mobilEKG/CSV-Splitter" in readme
     assert "README.zh-CN.md" in readme
+    assert "CSV_Splitter_macos.zip" in readme
+    assert "CSV Splitter.app" in readme
 
 
 def test_chinese_readme_is_available_as_a_linked_translation():
@@ -31,6 +33,18 @@ def test_cnb_pipeline_covers_review_main_and_release_events():
     assert "  push:" in pipeline
     assert "  tag_push:" in pipeline
     assert "cnbcool/attachments:latest" in pipeline
+    assert "scripts/package_macos.sh" in pipeline
+    assert "--output dist_upload/CSV_Splitter_macos" not in pipeline
+
+
+def test_macos_package_metadata_is_present():
+    plist = (ROOT / "packaging" / "macos" / "Info.plist").read_text(encoding="utf-8")
+    script = (ROOT / "scripts" / "package_macos.sh").read_text(encoding="utf-8")
+
+    assert "CSV_Splitter" in plist
+    assert "CFBundlePackageType" in plist
+    assert "ditto -c -k" in script
+    assert "chmod 755" in script
 
 
 def test_landing_page_has_search_and_social_metadata():

@@ -36,6 +36,17 @@ Microsoft Excel 工作表最多支持 1,048,576 行。如果源文件超过这�
 2. 下载 `CSV_Splitter_windows.exe`。
 3. 运行程序并选择要拆分的文件。
 
+## macOS 下载
+
+当前 macOS 版本仅支持 Apple Silicon Mac。
+
+1. 打开 [CNB 最新版本](https://cnb.cool/CodeAnt-2026/CSV-Splitter/-/releases/latest)。
+2. 下载 `CSV_Splitter_macos.zip`。
+3. 打开 ZIP，然后双击 `CSV Splitter.app`。
+4. 如果 macOS 显示安全提示，请按住 Control 键点击应用，选择“打开”，然后确认。
+
+必须使用 ZIP，因为直接下载裸可执行文件可能会丢失 macOS 的执行权限。
+
 ## 从源代码运行
 
 安装 Python 依赖：
@@ -57,6 +68,16 @@ python csv-splitter.py
 ```bash
 pyinstaller csv-splitter.py --clean --noupx --noconsole --noconfirm --onefile --windowed --icon=app_icon.ico --add-data "app_icon.ico;."
 ```
+
+## 构建 macOS 安装包
+
+请在安装好 Python 和项目依赖的 Apple Silicon Mac 上运行：
+
+```bash
+sh scripts/package_macos.sh
+```
+
+脚本会生成 `dist/CSV_Splitter_macos.zip`。CNB 托管的 Linux 构建节点不能交叉构建 macOS 程序。
 
 ## 测试
 

@@ -1,7 +1,7 @@
 # CNB CI/CD for CSV Splitter.
-# Hosted CNB runners use Linux Docker containers. Windows and macOS packages
-# require organization-owned Windows and macOS build nodes, so this pipeline
-# publishes the Linux package and keeps the other platforms out of false claims.
+# Hosted CNB runners use Linux Docker containers. The macOS package is built by
+# scripts/package_macos.sh on a custom organization-owned Mac node. Until that
+# node is online, do not publish a stale bare macOS executable as a release asset.
 
 main:
   # Run the test suite for every pull request targeting main.
@@ -116,19 +116,15 @@ $:
               --icon=app_icon.ico --add-data "app_icon.ico:."
             mkdir -p dist_upload
             mv dist/csv-splitter dist_upload/CSV_Splitter_linux
-        - name: Carry over migration platform packages
+        - name: Carry over migration Windows package
           script: |
             set -eu
-            # Only the migration release reuses the public binaries from the
-            # GitHub backup. Future Windows and macOS updates need matching
-            # custom CNB build nodes and must not reuse stale binaries.
+            # Only the migration release reuses the existing Windows binary.
+            # Future Windows and macOS updates need matching custom nodes.
             if [ "${CNB_BRANCH}" != "v0.2.3" ]; then
               exit 0
             fi
             release_url="https://github.com/mobilEKG/CSV-Splitter/releases/download/v0.2.1"
-            curl --fail --location --retry 3 \
-              --output dist_upload/CSV_Splitter_macos \
-              "${release_url}/CSV_Splitter_macos"
             curl --fail --location --retry 3 \
               --output dist_upload/CSV_Splitter_windows.exe \
               "${release_url}/CSV_Splitter_windows.exe"
@@ -143,8 +139,8 @@ $:
 
               CNB builds the Linux executable for every tag. The one-time
               migration release v0.2.3 also carries over the existing Windows
-              and macOS packages from the GitHub backup. Future cross-platform
-              updates require matching custom CNB build nodes.
+              package from the GitHub backup. A macOS package is published only
+              when a custom CNB Mac runner builds it.
             latest: true
         - name: Upload release assets
           # This is CNB's official release and commit attachment plugin.

@@ -36,6 +36,17 @@ Use it when you need to:
 2. Download `CSV_Splitter_windows.exe`.
 3. Run the executable and select the file you want to split.
 
+## Download For macOS
+
+The macOS package currently supports Apple Silicon Macs only.
+
+1. Open the [latest CNB release](https://cnb.cool/CodeAnt-2026/CSV-Splitter/-/releases/latest).
+2. Download `CSV_Splitter_macos.zip`.
+3. Open the ZIP, then double-click `CSV Splitter.app`.
+4. If macOS shows a security warning, Control-click the app, choose Open, and confirm.
+
+The ZIP is required because a direct download of a bare executable can lose its macOS execute permission.
+
 ## Run From Source
 
 Install the required Python dependencies with:
@@ -57,6 +68,16 @@ Set "Lines per file" below your target row limit. When "Include header in each p
 ```bash
 pyinstaller csv-splitter.py --clean --noupx --noconsole --noconfirm --onefile --windowed --icon=app_icon.ico --add-data "app_icon.ico;."
 ```
+
+## Build A macOS Package
+
+Run this on an Apple Silicon Mac with Python and the dependencies installed:
+
+```bash
+sh scripts/package_macos.sh
+```
+
+The script creates `dist/CSV_Splitter_macos.zip`. CNB hosted Linux runners cannot cross-build this package.
 
 ## Testing
 
