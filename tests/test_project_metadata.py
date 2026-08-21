@@ -16,6 +16,8 @@ def test_readme_keeps_primary_positioning_and_download_cta():
     assert "README.zh-CN.md" in readme
     assert "CSV_Splitter_macos.zip" in readme
     assert "CSV Splitter.app" in readme
+    assert "CSV_Splitter_linux.zip" in readme
+    assert "./CSV_Splitter_linux" in readme
 
 
 def test_chinese_readme_is_available_as_a_linked_translation():
@@ -34,8 +36,12 @@ def test_cnb_pipeline_covers_review_main_and_release_events():
     assert "  tag_push:" in pipeline
     assert "cnbcool/attachments:latest" in pipeline
     assert "scripts/package_macos.sh" in pipeline
+    assert "scripts/package_linux.sh" in pipeline
     assert "CSV_Splitter_macos.zip" in pipeline
-    assert "v0.2.4" in pipeline
+    assert "CSV_Splitter_linux.zip" in pipeline
+    assert "python:3.11-slim-bookworm" in pipeline
+    assert "v0.2.5" in pipeline
+    assert "releases/download/v0.2.4" in pipeline
     assert "CSV_Splitter_macos\"" not in pipeline
 
 
@@ -47,6 +53,16 @@ def test_macos_package_metadata_is_present():
     assert "CFBundlePackageType" in plist
     assert "ditto -c -k" in script
     assert "chmod 755" in script
+
+
+def test_linux_package_script_metadata_is_present():
+    script = (ROOT / "scripts" / "package_linux.sh").read_text(encoding="utf-8")
+
+    assert "Debian 12 glibc baseline" in script
+    assert "--name CSV_Splitter_linux" in script
+    assert "app_icon.icns" in script
+    assert "chmod 755" in script
+    assert "zip -9 CSV_Splitter_linux.zip CSV_Splitter_linux" in script
 
 
 def test_landing_page_has_search_and_social_metadata():

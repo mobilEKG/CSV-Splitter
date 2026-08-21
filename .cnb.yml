@@ -8,7 +8,7 @@ main:
   pull_request:
     - name: Test pull request
       docker:
-        image: python:3.11-slim
+        image: python:3.11-slim-bookworm
         # Reuse pip's download cache between runs without sharing the source tree.
         volumes:
           - /root/.cache/pip
@@ -26,7 +26,7 @@ main:
   push:
     - name: Verify main
       docker:
-        image: python:3.11-slim
+        image: python:3.11-slim-bookworm
         volumes:
           - /root/.cache/pip
       stages:
@@ -39,6 +39,7 @@ main:
             apt-get update
             apt-get install -y --no-install-recommends \
               binutils \
+              zip \
               libegl1 \
               libgl1 \
               libopengl0 \
@@ -62,12 +63,10 @@ main:
         - name: Build Linux executable
           script: |
             set -eu
-            # Linux uses ':' between PyInstaller's source and destination paths.
-            python -m PyInstaller csv-splitter.py \
-              --clean --noupx --noconsole --noconfirm --onefile --windowed \
-              --icon=app_icon.ico --add-data "app_icon.ico:."
+            # The ZIP preserves the execute bit that direct CNB downloads lose.
+            sh scripts/package_linux.sh
             mkdir -p dist_upload
-            mv dist/csv-splitter dist_upload/CSV_Splitter_linux
+            mv dist/CSV_Splitter_linux.zip dist_upload/CSV_Splitter_linux.zip
 
 # A tag is the release boundary. Re-running a tag updates the same CNB release
 # instead of deleting and recreating it, then replaces the Linux attachment.
@@ -75,7 +74,7 @@ $:
   tag_push:
     - name: Publish tagged release
       docker:
-        image: python:3.11-slim
+        image: python:3.11-slim-bookworm
         volumes:
           - /root/.cache/pip
       stages:
@@ -88,6 +87,7 @@ $:
             apt-get install -y --no-install-recommends \
               binutils \
               curl \
+              zip \
               libegl1 \
               libgl1 \
               libopengl0 \
@@ -111,18 +111,17 @@ $:
         - name: Build Linux executable
           script: |
             set -eu
-            python -m PyInstaller csv-splitter.py \
-              --clean --noupx --noconsole --noconfirm --onefile --windowed \
-              --icon=app_icon.ico --add-data "app_icon.ico:."
+            # The ZIP preserves the execute bit that direct CNB downloads lose.
+            sh scripts/package_linux.sh
             mkdir -p dist_upload
-            mv dist/csv-splitter dist_upload/CSV_Splitter_linux
+            mv dist/CSV_Splitter_linux.zip dist_upload/CSV_Splitter_linux.zip
         - name: Carry over migration platform packages
           script: |
             set -eu
             # The migration release reuses public backup assets because hosted
             # CNB runners build Linux only. The macOS asset is a ZIP containing
             # a Finder-openable app, not the old bare executable.
-            if [ "${CNB_BRANCH}" != "v0.2.4" ]; then
+            if [ "${CNB_BRANCH}" != "v0.2.5" ]; then
               exit 0
             fi
             release_url="https://github.com/mobilEKG/CSV-Splitter/releases/download/v0.2.4"
@@ -142,7 +141,7 @@ $:
               CSV Splitter ${CNB_BRANCH} release.
 
               CNB builds the Linux executable for every tag. The one-time
-              migration release v0.2.4 also carries over the Windows package and
+              migration release v0.2.5 also carries over the Windows package and
               the Finder-openable macOS ZIP from the GitHub backup. Future
               cross-platform updates require matching custom CNB build nodes.
             latest: true

@@ -47,6 +47,16 @@ The macOS package currently supports Apple Silicon Macs only.
 
 The ZIP is required because a direct download of a bare executable can lose its macOS execute permission.
 
+## Download For Linux
+
+The Linux package supports x86_64 Linux.
+
+1. Open the [latest CNB release](https://cnb.cool/CodeAnt-2026/CSV-Splitter/-/releases/latest).
+2. Download `CSV_Splitter_linux.zip`.
+3. Extract the ZIP and run `./CSV_Splitter_linux` from the extracted directory.
+
+The package is built on Debian 12 to support older glibc-based Linux distributions.
+
 ## Run From Source
 
 Install the required Python dependencies with:
@@ -78,6 +88,16 @@ sh scripts/package_macos.sh
 ```
 
 The script creates `dist/CSV_Splitter_macos.zip`. CNB hosted Linux runners cannot cross-build this package.
+
+## Build A Linux Package
+
+Run this on an x86_64 Linux system with Python and the dependencies installed:
+
+```bash
+sh scripts/package_linux.sh
+```
+
+The script creates `dist/CSV_Splitter_linux.zip`.
 
 ## Testing
 

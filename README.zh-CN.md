@@ -47,6 +47,16 @@ Microsoft Excel 工作表最多支持 1,048,576 行。如果源文件超过这�
 
 必须使用 ZIP，因为直接下载裸可执行文件可能会丢失 macOS 的执行权限。
 
+## Linux 下载
+
+Linux 安装包支持 x86_64 架构。
+
+1. 打开 [CNB 最新版本](https://cnb.cool/CodeAnt-2026/CSV-Splitter/-/releases/latest)。
+2. 下载 `CSV_Splitter_linux.zip`。
+3. 解压 ZIP，然后在解压目录中运行 `./CSV_Splitter_linux`。
+
+安装包基于 Debian 12 构建，以兼容较旧的 glibc Linux 系统。
+
 ## 从源代码运行
 
 安装 Python 依赖：
@@ -78,6 +88,16 @@ sh scripts/package_macos.sh
 ```
 
 脚本会生成 `dist/CSV_Splitter_macos.zip`。CNB 托管的 Linux 构建节点不能交叉构建 macOS 程序。
+
+## 构建 Linux 安装包
+
+请在安装好 Python 和项目依赖的 x86_64 Linux 系统上运行：
+
+```bash
+sh scripts/package_linux.sh
+```
+
+脚本会生成 `dist/CSV_Splitter_linux.zip`。
 
 ## 测试
 
