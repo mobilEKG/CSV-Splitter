@@ -5,12 +5,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_readme_keeps_primary_positioning_and_download_cta():
+    # Keep the shared default README English for both the CNB primary and the GitHub backup.
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert readme.startswith("# CSV Splitter：Windows 开源大文件 CSV 拆分工具")
-    assert "下载最新版本" in readme
-    assert "1,048,576 行" in readme
-    assert "大型 CSV 文件" in readme
+    assert readme.startswith("# CSV Splitter: Open Source Large CSV File Splitter for Windows")
+    assert "Download the latest Windows executable from CNB" in readme
+    assert "1,048,576 rows" in readme
+    assert "large CSV file" in readme
+    assert "https://github.com/mobilEKG/CSV-Splitter" in readme
+    assert "README.zh-CN.md" in readme
+
+
+def test_chinese_readme_is_available_as_a_linked_translation():
+    chinese_readme = (ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
+
+    assert chinese_readme.startswith("# CSV Splitter：Windows 开源大文件 CSV 拆分工具")
+    assert "README.md" in chinese_readme
+    assert "https://github.com/mobilEKG/CSV-Splitter" in chinese_readme
 
 
 def test_cnb_pipeline_covers_review_main_and_release_events():

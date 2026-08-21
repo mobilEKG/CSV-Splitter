@@ -1,75 +1,72 @@
-# CSV Splitter：Windows 开源大文件 CSV 拆分工具
+# CSV Splitter: Open Source Large CSV File Splitter for Windows
 
-CSV Splitter 是一个免费开源的 Windows 桌面应用，可以把大型 CSV、TXT、XML 和日志文件拆分成更小的文件，方便在 Excel 和其他工具中打开、检查和分享。
+CSV Splitter is a free, open-source desktop app for splitting large CSV, TXT, XML, and log files into smaller parts that are easier to open in Excel and other tools.
 
-[下载最新版本（CNB 主仓库）](https://cnb.cool/CodeAnt-2026/CSV-Splitter/-/releases/latest) 或使用 Python 从源代码运行。GitHub 仅作为备份。
-也可以访问 [GitHub 备份发布页](https://github.com/mobilEKG/CSV-Splitter/releases/latest)。
+[Download the latest Windows executable from CNB](https://cnb.cool/CodeAnt-2026/CSV-Splitter/-/releases/latest) or run from source with Python. CNB is the primary repository and GitHub is the backup mirror.
 
-## 为什么需要 CSV Splitter
+[CNB primary repository](https://cnb.cool/CodeAnt-2026/CSV-Splitter) | [GitHub backup](https://github.com/mobilEKG/CSV-Splitter) | [中文说明](README.zh-CN.md)
 
-Microsoft Excel 工作表最多支持 1,048,576 行。如果源文件超过这个限制，CSV Splitter 可以让你设置合适的行数，并生成带编号的输出文件。
+## Why Use CSV Splitter?
 
-适合以下场景：
+Microsoft Excel worksheets are limited to 1,048,576 rows. When a source file is larger than that, CSV Splitter lets you choose a practical row count and generate numbered output files that stay easier to open, inspect, and share.
 
-- 在大型 CSV 文件超过 Excel 的 1,048,576 行限制前进行拆分。
-- 把大型文本导出文件拆成多个带编号的小文件。
-- 在每个输出文件的开头保留原始表头。
-- 使用简单的 Windows 桌面界面，不必编写命令行脚本。
+Use it when you need to:
 
-## 截图
+- Split a large CSV file before Excel's 1,048,576-row worksheet limit gets in the way.
+- Break large text-based exports into smaller numbered files.
+- Keep the original header row at the top of every generated part.
+- Use a simple Windows desktop GUI instead of command-line scripts.
 
-![CSV Splitter 主窗口，显示文件选择、行数设置、表头选项和拆分控制](images/Screenshot.png)
+## Screenshot
 
-## 功能
+![CSV Splitter main window showing file selection, line count options, header inclusion, and split controls](images/Screenshot.png)
 
-- 将 CSV、TXT、XML、日志和其他文本文件拆分成带编号的多个部分。
-- 设置每个输出文件包含的数据行数。
-- 选择是否将源文件表头复制到每个输出文件。
-- 防止意外覆盖已有的输出文件。
-- 取消耗时的行数统计或文件拆分任务。
-- 使用 PyInstaller 构建独立的 Windows 可执行文件。
+## Features
 
-## Windows 下载
+- Split CSV, TXT, XML, log, and other text-based files into numbered parts.
+- Choose how many data lines should go into each output file.
+- Optionally copy the source header row into every generated part.
+- Prevent accidental overwrites of existing output files.
+- Cancel long-running line counts or split jobs.
+- Build a standalone Windows executable with PyInstaller.
 
-1. 打开 [CNB 最新版本](https://cnb.cool/CodeAnt-2026/CSV-Splitter/-/releases/latest)。
-2. 下载 `CSV_Splitter_windows.exe`。
-3. 运行程序并选择要拆分的文件。
+## Download For Windows
 
-## 从源代码运行
+1. Open the [latest CNB release](https://cnb.cool/CodeAnt-2026/CSV-Splitter/-/releases/latest).
+2. Download `CSV_Splitter_windows.exe`.
+3. Run the executable and select the file you want to split.
 
-安装 Python 依赖：
+## Run From Source
+
+Install the required Python dependencies with:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-启动图形界面：
+Launch the graphical interface with:
 
 ```bash
 python csv-splitter.py
 ```
 
-将“每个文件的行数”设置为低于目标行数上限的值。启用“在每个部分中包含表头”后，表头会额外写入每个输出文件，不计入设置的数据行数。
+Set "Lines per file" below your target row limit. When "Include header in each part" is enabled, the header row is added to each output file in addition to the selected data-line count.
 
-## 构建 Windows 可执行文件
+## Build A Windows Executable
 
 ```bash
 pyinstaller csv-splitter.py --clean --noupx --noconsole --noconfirm --onefile --windowed --icon=app_icon.ico --add-data "app_icon.ico;."
 ```
 
-## 测试
+## Testing
 
-安装 pytest，然后运行测试套件：
+Install pytest, then run the test suite:
 
 ```bash
 pip install pytest
 pytest -q
 ```
 
-## 英文说明
+## License
 
-英文版本见 [README.en.md](README.en.md)。
-
-## 许可证
-
-本项目使用 MIT 许可证发布。
+This project is released under the MIT License.
