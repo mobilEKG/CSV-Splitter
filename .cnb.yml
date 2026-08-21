@@ -1,0 +1,133 @@
+# CNB CI/CD for CSV Splitter.
+# Hosted CNB runners use Linux Docker containers. Windows and macOS packages
+# require organization-owned Windows and macOS build nodes, so this pipeline
+# publishes the Linux package and keeps the other platforms out of false claims.
+
+main:
+  # Run the test suite for every pull request targeting main.
+  pull_request:
+    - name: Test pull request
+      docker:
+        image: python:3.11-slim
+        # Reuse pip's download cache between runs without sharing the source tree.
+        volumes:
+          - /root/.cache/pip
+      stages:
+        - name: Install test dependencies
+          script: |
+            set -eu
+            python -m pip install --disable-pip-version-check --upgrade pip
+            python -m pip install --disable-pip-version-check -r requirements.txt
+            python -m pip install --disable-pip-version-check pytest
+        - name: Run tests
+          script: python -m pytest -q
+
+  # Verify main pushes and build the Linux executable as a packaging check.
+  push:
+    - name: Verify main
+      docker:
+        image: python:3.11-slim
+        volumes:
+          - /root/.cache/pip
+      stages:
+        - name: Install Linux packaging tools
+          script: |
+            set -eu
+            export DEBIAN_FRONTEND=noninteractive
+            # PyInstaller needs objdump, and bundled Qt needs these runtime
+            # libraries when the Linux executable starts in a slim container.
+            apt-get update
+            apt-get install -y --no-install-recommends \
+              binutils \
+              libegl1 \
+              libgl1 \
+              libopengl0 \
+              libglib2.0-0 \
+              libx11-6 \
+              libdbus-1-3 \
+              libxkbcommon0 \
+              libfontconfig1 \
+              libfreetype6 \
+              libbrotli1
+            rm -rf /var/lib/apt/lists/*
+        - name: Install build dependencies
+          script: |
+            set -eu
+            python -m pip install --disable-pip-version-check --upgrade pip
+            python -m pip install --disable-pip-version-check -r requirements.txt
+            python -m pip install --disable-pip-version-check pyinstaller pytest
+        - name: Run tests
+          script: python -m pytest -q
+        - name: Build Linux executable
+          script: |
+            set -eu
+            # Linux uses ':' between PyInstaller's source and destination paths.
+            python -m PyInstaller csv-splitter.py \
+              --clean --noupx --noconsole --noconfirm --onefile --windowed \
+              --icon=app_icon.ico --add-data "app_icon.ico:."
+            mkdir -p dist_upload
+            mv dist/csv-splitter dist_upload/CSV_Splitter_linux
+
+# A tag is the release boundary. Re-running a tag updates the same CNB release
+# instead of deleting and recreating it, then replaces the Linux attachment.
+$:
+  tag_push:
+    - name: Publish tagged release
+      docker:
+        image: python:3.11-slim
+        volumes:
+          - /root/.cache/pip
+      stages:
+        - name: Install Linux packaging tools
+          script: |
+            set -eu
+            export DEBIAN_FRONTEND=noninteractive
+            # Keep the tag build identical to the main packaging check.
+            apt-get update
+            apt-get install -y --no-install-recommends \
+              binutils \
+              libegl1 \
+              libgl1 \
+              libopengl0 \
+              libglib2.0-0 \
+              libx11-6 \
+              libdbus-1-3 \
+              libxkbcommon0 \
+              libfontconfig1 \
+              libfreetype6 \
+              libbrotli1
+            rm -rf /var/lib/apt/lists/*
+        - name: Install release dependencies
+          script: |
+            set -eu
+            python -m pip install --disable-pip-version-check --upgrade pip
+            python -m pip install --disable-pip-version-check -r requirements.txt
+            python -m pip install --disable-pip-version-check pyinstaller pytest
+        - name: Run tests
+          script: python -m pytest -q
+        - name: Build Linux executable
+          script: |
+            set -eu
+            python -m PyInstaller csv-splitter.py \
+              --clean --noupx --noconsole --noconfirm --onefile --windowed \
+              --icon=app_icon.ico --add-data "app_icon.ico:."
+            mkdir -p dist_upload
+            mv dist/csv-splitter dist_upload/CSV_Splitter_linux
+        - name: Create CNB release
+          type: git:release
+          options:
+            # Overlay mode makes tag retries idempotent.
+            overlying: true
+            title: "CSV Splitter ${CNB_BRANCH}"
+            description: |
+              CSV Splitter ${CNB_BRANCH} release.
+
+              This release contains the Linux executable. Windows and macOS
+              packages require matching custom CNB build nodes.
+            latest: true
+        - name: Upload Linux release asset
+          # This is CNB's official release and commit attachment plugin.
+          image: cnbcool/attachments:latest
+          settings:
+            attachments:
+              - /workspace/dist_upload/CSV_Splitter_linux
