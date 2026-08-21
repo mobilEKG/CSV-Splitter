@@ -36,7 +36,7 @@ def test_cnb_pipeline_covers_review_main_and_release_events():
     assert "scripts/package_macos.sh" in pipeline
     assert "CSV_Splitter_macos.zip" in pipeline
     assert "v0.2.4" in pipeline
-    assert "--output dist_upload/CSV_Splitter_macos" not in pipeline
+    assert "CSV_Splitter_macos\"" not in pipeline
 
 
 def test_macos_package_metadata_is_present():
