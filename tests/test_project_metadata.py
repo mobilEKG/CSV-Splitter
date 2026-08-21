@@ -34,6 +34,8 @@ def test_cnb_pipeline_covers_review_main_and_release_events():
     assert "  tag_push:" in pipeline
     assert "cnbcool/attachments:latest" in pipeline
     assert "scripts/package_macos.sh" in pipeline
+    assert "CSV_Splitter_macos.zip" in pipeline
+    assert "v0.2.4" in pipeline
     assert "--output dist_upload/CSV_Splitter_macos" not in pipeline
 
 

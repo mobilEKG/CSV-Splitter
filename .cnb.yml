@@ -116,15 +116,19 @@ $:
               --icon=app_icon.ico --add-data "app_icon.ico:."
             mkdir -p dist_upload
             mv dist/csv-splitter dist_upload/CSV_Splitter_linux
-        - name: Carry over migration Windows package
+        - name: Carry over migration platform packages
           script: |
             set -eu
-            # Only the migration release reuses the existing Windows binary.
-            # Future Windows and macOS updates need matching custom nodes.
-            if [ "${CNB_BRANCH}" != "v0.2.3" ]; then
+            # The migration release reuses public backup assets because hosted
+            # CNB runners build Linux only. The macOS asset is a ZIP containing
+            # a Finder-openable app, not the old bare executable.
+            if [ "${CNB_BRANCH}" != "v0.2.4" ]; then
               exit 0
             fi
-            release_url="https://github.com/mobilEKG/CSV-Splitter/releases/download/v0.2.1"
+            release_url="https://github.com/mobilEKG/CSV-Splitter/releases/download/v0.2.4"
+            curl --fail --location --retry 3 \
+              --output dist_upload/CSV_Splitter_macos.zip \
+              "${release_url}/CSV_Splitter_macos.zip"
             curl --fail --location --retry 3 \
               --output dist_upload/CSV_Splitter_windows.exe \
               "${release_url}/CSV_Splitter_windows.exe"
@@ -138,9 +142,9 @@ $:
               CSV Splitter ${CNB_BRANCH} release.
 
               CNB builds the Linux executable for every tag. The one-time
-              migration release v0.2.3 also carries over the existing Windows
-              package from the GitHub backup. A macOS package is published only
-              when a custom CNB Mac runner builds it.
+              migration release v0.2.4 also carries over the Windows package and
+              the Finder-openable macOS ZIP from the GitHub backup. Future
+              cross-platform updates require matching custom CNB build nodes.
             latest: true
         - name: Upload release assets
           # This is CNB's official release and commit attachment plugin.
