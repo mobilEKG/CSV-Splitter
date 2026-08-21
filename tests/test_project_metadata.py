@@ -20,6 +20,15 @@ def test_readme_keeps_primary_positioning_and_download_cta():
     assert "./CSV_Splitter_linux" in readme
 
 
+def test_english_readme_alias_matches_current_release_documentation():
+    readme = (ROOT / "README.en.md").read_text(encoding="utf-8")
+
+    assert "CNB is the primary repository" in readme
+    assert "CSV_Splitter_macos.zip" in readme
+    assert "CSV_Splitter_linux.zip" in readme
+    assert "scripts/package_linux.sh" in readme
+
+
 def test_chinese_readme_is_available_as_a_linked_translation():
     chinese_readme = (ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
 

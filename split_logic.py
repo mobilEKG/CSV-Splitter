@@ -6,6 +6,10 @@ from typing import Callable, List, Optional
 ProgressCallback = Callable[[int], None]
 CancelCallback = Callable[[], bool]
 
+# A queued Qt signal for every source line becomes expensive on large files.
+# Batch progress notifications while still checking cancellation per line.
+PROGRESS_BATCH_SIZE = 1000
+
 
 class SplitCancelled(RuntimeError):
     """Raised when a split operation is cancelled before completion."""
@@ -91,47 +95,75 @@ def split_csv_file(
         else encoding
     )
     finalized_paths: List[str] = []
+    pending_progress = 0
+    active_output_file = None
 
     def check_cancelled() -> None:
         if should_cancel and should_cancel():
             raise SplitCancelled("Split cancelled")
 
-    def write_part(file_index: int, header: str, lines: List[str]) -> str:
+    def flush_progress() -> None:
+        nonlocal pending_progress
+        if progress_callback and pending_progress:
+            progress_callback(pending_progress)
+            pending_progress = 0
+
+    def report_progress(lines_processed: int) -> None:
+        nonlocal pending_progress
+        if not progress_callback:
+            return
+
+        pending_progress += lines_processed
+        if pending_progress >= PROGRESS_BATCH_SIZE:
+            flush_progress()
+
+    def open_part(file_index: int, header: str):
         temporary_path = os.path.join(
             output_dir,
             f".{name}_{file_index}_of_{run_id}.tmp{ext}",
         )
-        with open(temporary_path, "x", encoding=output_encoding) as out_file:
-            temporary_paths.append(temporary_path)
+        out_file = open(temporary_path, "x", encoding=output_encoding)
+        temporary_paths.append(temporary_path)
+        try:
             if include_header:
                 out_file.write(header)
-            out_file.writelines(lines)
-        return temporary_path
+        except Exception:
+            out_file.close()
+            raise
+        return out_file
 
     try:
         with open(file_path, "r", encoding=encoding) as f:
             header = f.readline() if include_header else ""
-            if include_header and header and progress_callback:
-                progress_callback(1)
+            if include_header and header:
+                report_progress(1)
 
-            lines = []
             file_index = 1
+            lines_in_part = 0
 
             for line in f:
                 check_cancelled()
-                lines.append(line)
-                if progress_callback:
-                    progress_callback(1)
+                if active_output_file is None:
+                    active_output_file = open_part(file_index, header)
+                    lines_in_part = 0
 
-                if len(lines) >= lines_per_file:
-                    write_part(file_index, header, lines)
-                    lines = []
+                active_output_file.write(line)
+                lines_in_part += 1
+                report_progress(1)
+
+                if lines_in_part >= lines_per_file:
+                    active_output_file.close()
+                    active_output_file = None
+                    lines_in_part = 0
                     file_index += 1
                     check_cancelled()
 
-            if lines:
-                check_cancelled()
-                write_part(file_index, header, lines)
+            if active_output_file is not None:
+                active_output_file.close()
+                active_output_file = None
+
+            # Flush a final partial batch so the GUI reaches the exact total.
+            flush_progress()
 
         written_files = len(temporary_paths)
         output_paths = [
@@ -152,6 +184,8 @@ def split_csv_file(
 
         return output_paths
     except Exception:
+        if active_output_file is not None:
+            active_output_file.close()
         for temporary_path in temporary_paths:
             if os.path.exists(temporary_path):
                 os.remove(temporary_path)

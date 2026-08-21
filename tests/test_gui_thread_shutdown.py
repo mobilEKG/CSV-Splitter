@@ -126,6 +126,14 @@ class FakeThread:
         self.running = False
 
 
+class FakeControl:
+    def __init__(self, enabled=True):
+        self.enabled = enabled
+
+    def setEnabled(self, enabled):
+        self.enabled = enabled
+
+
 def test_close_event_cancels_and_waits_for_running_split(monkeypatch):
     gui = load_gui_module(monkeypatch)
     splitter = gui.CSVSplitter.__new__(gui.CSVSplitter)
@@ -186,6 +194,34 @@ def test_count_worker_emits_cancelled_when_count_lines_is_cancelled(monkeypatch)
 
     assert cancelled_files == ["sample.csv"]
     assert errors == []
+
+
+def test_cancel_current_operation_routes_to_count_worker(monkeypatch):
+    gui = load_gui_module(monkeypatch)
+    splitter = gui.CSVSplitter.__new__(gui.CSVSplitter)
+    splitter.count_worker = FakeCountWorker()
+    splitter.split_worker = None
+
+    splitter.cancel_current_operation()
+
+    assert splitter.count_worker.cancel_requested
+
+
+def test_clear_count_worker_disables_cancel_and_reenables_selection(monkeypatch):
+    gui = load_gui_module(monkeypatch)
+    splitter = gui.CSVSplitter.__new__(gui.CSVSplitter)
+    splitter.count_thread = FakeThread()
+    splitter.count_worker = FakeCountWorker()
+    splitter.cancel_button = FakeControl(enabled=True)
+    splitter.select_button = FakeControl(enabled=False)
+    splitter.is_closing = False
+
+    splitter.clear_count_worker()
+
+    assert splitter.count_thread is None
+    assert splitter.count_worker is None
+    assert not splitter.cancel_button.enabled
+    assert splitter.select_button.enabled
 
 
 def test_split_terminal_handlers_suppress_messages_during_close(monkeypatch):

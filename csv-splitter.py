@@ -158,7 +158,7 @@ class CSVSplitter(QWidget):
         self.button_layout.addWidget(self.split_button)
 
         self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.clicked.connect(self.cancel_split)
+        self.cancel_button.clicked.connect(self.cancel_current_operation)
         self.cancel_button.setEnabled(False)
         self.button_layout.addWidget(self.cancel_button)
 
@@ -191,6 +191,7 @@ class CSVSplitter(QWidget):
             )
             self.select_button.setEnabled(False)
             self.split_button.setEnabled(False)
+            self.cancel_button.setEnabled(True)
             self.start_count_lines(file_path)
 
     def start_count_lines(self, file_path):
@@ -214,6 +215,7 @@ class CSVSplitter(QWidget):
     def clear_count_worker(self):
         self.count_thread = None
         self.count_worker = None
+        self.cancel_button.setEnabled(False)
         if not self.is_closing:
             self.select_button.setEnabled(True)
 
@@ -258,6 +260,14 @@ class CSVSplitter(QWidget):
     def cancel_count(self):
         if self.count_worker:
             self.count_worker.request_cancel()
+
+    def cancel_current_operation(self):
+        # The same button is used for line counting and splitting, but only one
+        # worker can run at a time. Route the request to the active worker.
+        if self.count_worker:
+            self.cancel_count()
+        elif self.split_worker:
+            self.cancel_split()
 
     def closeEvent(self, event):
         self.is_closing = True

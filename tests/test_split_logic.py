@@ -87,24 +87,38 @@ def test_split_csv_file_raises_on_invalid_utf8(tmp_path):
 def test_split_csv_file_cleans_up_temporary_files_when_cancelled(tmp_path):
     input_file = tmp_path / "sample.csv"
     input_file.write_text("header\nrow1\nrow2\nrow3\n")
-    progress_calls = 0
+    cancellation_checks = 0
 
-    def track_progress(_lines_processed):
-        nonlocal progress_calls
-        progress_calls += 1
+    def cancel_after_two_parts():
+        nonlocal cancellation_checks
+        cancellation_checks += 1
+        return cancellation_checks > 3
 
-    def cancel_after_first_part():
-        return progress_calls >= 3
-
-    with pytest.raises(RuntimeError, match="cancel"):
+    with pytest.raises(SplitCancelled, match="cancel"):
         split_csv_file(
             str(input_file),
             lines_per_file=1,
-            progress_callback=track_progress,
-            should_cancel=cancel_after_first_part,
+            should_cancel=cancel_after_two_parts,
         )
 
     assert sorted(p.name for p in tmp_path.iterdir()) == ["sample.csv"]
+
+
+def test_split_csv_file_batches_progress_updates(tmp_path):
+    input_file = tmp_path / "sample.csv"
+    input_file.write_text(
+        "header\n" + "\n".join(f"row{i}" for i in range(2500)) + "\n"
+    )
+    progress_calls = []
+
+    split_csv_file(
+        str(input_file),
+        lines_per_file=5000,
+        progress_callback=progress_calls.append,
+    )
+
+    assert sum(progress_calls) == 2501
+    assert len(progress_calls) < 2501
 
 
 def test_split_csv_file_cleans_up_temporary_file_when_write_fails(tmp_path, monkeypatch):
@@ -128,6 +142,9 @@ def test_split_csv_file_cleans_up_temporary_file_when_write_fails(tmp_path, monk
 
         def writelines(self, _lines):
             raise OSError("disk full")
+
+        def close(self):
+            self.wrapped.close()
 
     def fail_temp_writes(path, mode="r", *args, **kwargs):
         opened_file = real_open(path, mode, *args, **kwargs)
