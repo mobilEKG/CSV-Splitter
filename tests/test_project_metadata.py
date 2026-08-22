@@ -44,14 +44,27 @@ def test_cnb_pipeline_covers_review_main_and_release_events():
     assert "  push:" in pipeline
     assert "  tag_push:" in pipeline
     assert "cnbcool/attachments:latest" in pipeline
-    assert "scripts/package_macos.sh" in pipeline
     assert "scripts/package_linux.sh" in pipeline
     assert "CSV_Splitter_macos.zip" in pipeline
     assert "CSV_Splitter_linux.zip" in pipeline
     assert "python:3.11-slim-bookworm" in pipeline
-    assert "v0.2.5" in pipeline
-    assert "releases/download/v0.2.4" in pipeline
+    assert "releases/download/${CNB_BRANCH}" in pipeline
+    assert "Fetch cross platform packages" in pipeline
+    assert "Timed out waiting for GitHub asset" in pipeline
     assert "CSV_Splitter_macos\"" not in pipeline
+
+
+def test_github_release_workflow_builds_native_windows_and_macos_assets():
+    workflow = (ROOT / ".github" / "workflows" / "build-release-assets.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "windows-2022" in workflow
+    assert "macos-14" in workflow
+    assert "scripts/package_macos.sh" in workflow
+    assert "CSV_Splitter_windows.exe" in workflow
+    assert "CSV_Splitter_macos.zip" in workflow
+    assert "gh release" in workflow
 
 
 def test_macos_package_metadata_is_present():

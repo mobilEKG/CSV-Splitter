@@ -1,7 +1,7 @@
 # CNB CI/CD for CSV Splitter.
-# Hosted CNB runners use Linux Docker containers. The macOS package is built by
-# scripts/package_macos.sh on a custom organization-owned Mac node. Until that
-# node is online, do not publish a stale bare macOS executable as a release asset.
+# Hosted CNB runners use Linux Docker containers. The backup GitHub repository
+# builds the Windows and macOS packages on native runners, then CNB imports the
+# assets for the same tag before creating the authoritative CNB release.
 
 main:
   # Run the test suite for every pull request targeting main.
@@ -69,7 +69,7 @@ main:
             mv dist/CSV_Splitter_linux.zip dist_upload/CSV_Splitter_linux.zip
 
 # A tag is the release boundary. Re-running a tag updates the same CNB release
-# instead of deleting and recreating it, then replaces the Linux attachment.
+# instead of deleting and recreating it, then replaces all three attachments.
 $:
   tag_push:
     - name: Publish tagged release
@@ -115,22 +115,35 @@ $:
             sh scripts/package_linux.sh
             mkdir -p dist_upload
             mv dist/CSV_Splitter_linux.zip dist_upload/CSV_Splitter_linux.zip
-        - name: Carry over migration platform packages
+        - name: Fetch cross platform packages
           script: |
             set -eu
-            # The migration release reuses public backup assets because hosted
-            # CNB runners build Linux only. The macOS asset is a ZIP containing
-            # a Finder-openable app, not the old bare executable.
-            if [ "${CNB_BRANCH}" != "v0.2.5" ]; then
-              exit 0
-            fi
-            release_url="https://github.com/mobilEKG/CSV-Splitter/releases/download/v0.2.4"
-            curl --fail --location --retry 3 \
-              --output dist_upload/CSV_Splitter_macos.zip \
-              "${release_url}/CSV_Splitter_macos.zip"
-            curl --fail --location --retry 3 \
-              --output dist_upload/CSV_Splitter_windows.exe \
-              "${release_url}/CSV_Splitter_windows.exe"
+            # GitHub's native Windows and Apple Silicon jobs finish after this
+            # CNB tag job starts. Retry public asset downloads until both jobs
+            # have published the exact same tag, or fail instead of using stale
+            # files from an older release.
+            release_url="https://github.com/mobilEKG/CSV-Splitter/releases/download/${CNB_BRANCH}"
+            fetch_asset() {
+              asset_name="$1"
+              asset_path="dist_upload/${asset_name}"
+              attempt=1
+              while [ "${attempt}" -le 40 ]; do
+                if curl --fail --location --silent --show-error \
+                  --output "${asset_path}" "${release_url}/${asset_name}"; then
+                  test -s "${asset_path}"
+                  return 0
+                fi
+                rm -f "${asset_path}"
+                if [ "${attempt}" -lt 40 ]; then
+                  sleep 15
+                fi
+                attempt=$((attempt + 1))
+              done
+              echo "Timed out waiting for GitHub asset: ${asset_name}" >&2
+              exit 1
+            }
+            fetch_asset CSV_Splitter_macos.zip
+            fetch_asset CSV_Splitter_windows.exe
         - name: Create CNB release
           type: git:release
           options:
@@ -140,10 +153,9 @@ $:
             description: |
               CSV Splitter ${CNB_BRANCH} release.
 
-              CNB builds the Linux executable for every tag. The one-time
-              migration release v0.2.5 also carries over the Windows package and
-              the Finder-openable macOS ZIP from the GitHub backup. Future
-              cross-platform updates require matching custom CNB build nodes.
+              CNB builds the Linux executable for every tag. The GitHub backup
+              builds the Windows executable and Finder-openable macOS ZIP on
+              native runners, and CNB imports those exact tag assets.
             latest: true
         - name: Upload release assets
           # This is CNB's official release and commit attachment plugin.
